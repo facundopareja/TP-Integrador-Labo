@@ -54,8 +54,8 @@ LOADING_CURRENT_PASSWORD:
 	clr eeprom_address_high
 	clr eeprom_address_low
 TRANSMIT_LOOP:
-	lds r17, UCSR0A
-	sbrs r17, UDRE0
+	lds temp, UCSR0A
+	sbrs temp, UDRE0
 	rjmp TRANSMIT_LOOP
 	rcall EEPROM_READ
 	mov temp, eeprom_dato
@@ -82,12 +82,12 @@ WAIT_CHAR:
 	cpi mode, LOCK_STATE
 	breq END_CONFIG_MODE
 	rjmp WAIT_CHAR
+	; Habria que guardar en RTC en caso de que se haya ingresado T
+STORE_CODE:
 	clr eeprom_address_high
 	clr eeprom_address_low
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
-	; Habria que guardar en RTC en caso de que se haya ingresado T
-STORE_CODE:
 	ldi numbers_received, LENGTH_CODE
 LOOP_STORE:
 	ld eeprom_dato, X+

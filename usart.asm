@@ -31,13 +31,15 @@ USART_Receive:
 	lds value_received, UDR0
 	mov temp, value_received
 	rcall USART_Transmit
+	cpi value_received, caracter_config_finished
+	breq SET_LOCK_MODE
 	cpi mode, CONFIG_STATE
 	breq VERIFY_NUMBER
 	cpi value_received, caracter_config_mode
 	breq SET_CONFIG_MODE
-	cpi value_received, caracter_config_finished
 	; Faltaria validar que reciba una T
 	brne FIN
+SET_LOCK_MODE:
 	ldi mode, LOCK_STATE
 	rjmp FIN
 SET_CONFIG_MODE:
