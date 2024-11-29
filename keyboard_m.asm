@@ -6,7 +6,6 @@
 .def 	tecla = 			r20
 .def 	contador = 			r21
 
-.equ 	msk_entrada = 	0b11110000
 .equ 	msk_prescaler = 0b00000111
 .equ 	clk_antireb = 	0b00000101
 .equ 	teclado_ini = 	0b11101111
@@ -155,8 +154,8 @@ validar_psw:
 	cpi contador, PSW_LIM
 	brne end_validar
 
-	mov XL, eeprom_address_low
-	mov XH, eeprom_address_high
+	clr eeprom_address_low
+	clr eeprom_address_high
 
 	ldi YL, low(passwordRAM)
 	ldi YH, high(passwordRAM)
@@ -165,7 +164,9 @@ validando:
 	dec contador
 
 	ld temp, Y+
-	ld value_received, X+
+	call EEPROM_READ
+	mov value_received, eeprom_dato
+	inc eeprom_address_low
 
 	cp temp, value_received
 	brne incorrecto
