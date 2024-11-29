@@ -6,6 +6,9 @@
 ;
 .equ caracter_config_mode = 'C'
 .equ caracter_config_finished = 'F'
+
+.equ 	msk_entrada = 	0b11110000
+
 ; Possible states
 .equ CONFIG_STATE = 1
 .equ LOCK_STATE = 2
@@ -60,6 +63,34 @@ PORT_INITIALIZING:
 
 	ldi temp, ~msk_entrada						;pullup y salidas en 0
 	out PORTD, temp
+
+INICIALIZACION_PC:
+	lds aux, PCMSK2
+	ori aux, ~msk_entrada
+	sts PCMSK2, aux 			;habilito los puertos de la entrada para interrupcion PC
+
+	in aux, PCIFR
+	ori aux, (1<<PCIF0)
+	out PCIFR, aux				;limpio el flag de interrupcion
+
+	lds aux, PCICR
+	ori aux, (1<<PCIE2)
+	sts PCICR, aux				;habilito la interrupcion de PC para el puerto D
+
+INICIALIZACION_TIMER0:
+	ldi aux, ~(11<<WGM00)			;modo normal
+	out TCCR0A, aux
+
+	ldi aux, (0<<WGM02) | (0b000<<CS00) 	;clock detenido
+	out TCCR0B, aux
+
+	in aux, TIFR0
+	ori aux, (1<<TOV0)
+	out TIFR0, aux				;limpio el flag de interrupcion
+
+	lds aux, TIMSK0
+	ori aux, (1<<TOIE0)
+	sts TIMSK0, aux				;habilito la interrupcion por Overflow
 
 MODULE_INITIALIZING:
 	rcall USART_Init
