@@ -23,10 +23,6 @@
 .equ 	TECLA_8 = 		0b10111110
 .equ 	TECLA_9 = 		0b10111101
 
-.equ 	STNBY_STATE = 		0b00010000
-.equ 	DET_STATE = 		0b00000010
-.equ 	STD_STATE = 		0b00000001
-
 inicio_conteo: 									;temp, contador
 	clr temp
 	out TCNT0, temp								;reinicio el contador

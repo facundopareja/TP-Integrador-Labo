@@ -10,9 +10,12 @@
 .equ CONFIG_STATE = 1
 .equ LOCK_STATE = 2
 .equ RECEIVED_CODE_STATE = 3
-.equ 	PSW_LIM = 			4
+.equ STNBY_STATE = 4
+.equ DET_STATE = 5
+.equ STD_STATE = 6
 ; Constants
 .equ LENGTH_CODE = 4
+.equ PSW_LIM = 4
 ; Register labels
 .DEF temp= r16
 .DEF mode= r17
@@ -94,12 +97,12 @@ WAIT_CHAR:
 	cpi mode, RECEIVED_CODE_STATE
 	breq STORE_CODE
 	rjmp WAIT_CHAR
-	clr eeprom_address_high
-	clr eeprom_address_low
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
 	; Habria que guardar en RTC en caso de que se haya ingresado T
 STORE_CODE:
+	ldi XH, high(KEYCODE)
+	ldi XL, low(KEYCODE)
+	clr eeprom_address_high
+	clr eeprom_address_low
 	ldi numbers_received, LENGTH_CODE
 LOOP_STORE:
 	ld eeprom_dato, X+
