@@ -3,12 +3,8 @@
 
 
 
-.def 	eeprom_add_L = 		r14
-.def 	eeprom_add_H = 		r15
-.def 	aux = 				r16
-.def 	value_received = 	r18
 .def 	tecla = 			r20
-.def 	contador = 			r3
+.def 	contador = 			r21
 
 .equ 	msk_entrada = 	0b11110000
 .equ 	msk_prescaler = 0b00000111
@@ -26,54 +22,27 @@
 .equ 	TECLA_7 = 		0b11010111
 .equ 	TECLA_8 = 		0b10111110
 .equ 	TECLA_9 = 		0b10111101
-.equ 	PSW_LIM = 			4
 
 .equ 	STNBY_STATE = 		0b00010000
 .equ 	DET_STATE = 		0b00000010
 .equ 	STD_STATE = 		0b00000001
 
-.dseg
+inicio_conteo: 									;temp, contador
+	clr temp
+	out TCNT0, temp								;reinicio el contador
 
-.org SRAM_START
-passwordRAM: .byte PSW_LIM
+	in temp, TCCR0B
+	andi temp, ~msk_prescaler
+	ori temp, clk_antireb
+	out TCCR0B, temp								;inicia el conteo, clk/1024
 
-.org PCI2addr
-	rjmp INT_teclado
-
-.org OC0Aaddr
-	rjmp INT_timer0
-
-;en main
-
-	ldi aux, msk_entrada
-	out DDRD, aux
-
-	ldi aux, ~msk_entrada						;pullup y salidas en 0
-	out PORTD, aux
-
-inicio_conteo: 									;aux, contador
-	clr aux
-	out TCNT0, aux								;reinicio el contador
-
-	in aux, TCCR0B
-	andi aux, ~msk_prescaler
-	ori aux, clk_antireb
-	out TCCR0B, aux								;inicia el conteo, clk/1024
-
-	lds aux, PCMSK2
-	andi aux, msk_entrada						;deshabilito los puertos de entrada para interrupcion de PC
-	sts PCMSK2, aux
+	lds temp, PCMSK2
+	andi temp, msk_entrada						;deshabilito los puertos de entrada para interrupcion de PC
+	sts PCMSK2, temp
 
 	ret
 
-loop:
-	cpi mode, DET_STATE
-	breq branch_detec
-	rjmp loop
-
 branch_detec:
- 	clr passwordL
- 	clr passwordH
  	clr contador
 
  	ldi YL, low(passwordRAM)
@@ -91,7 +60,9 @@ detectando:
 	call validar_psw
 
 	cpi mode, STD_STATE
-	breq loop
+	in temp, sreg
+	sbrc temp, sreg_z
+	ret
 
 	ldi mode, STNBY_STATE
 
@@ -118,63 +89,69 @@ busc_fila:
 	rjmp busc_fila
 
 end_busc:
-	in aux, PIND 								;PIND debería tener un solo bit en 0 entre los bits 0 y 3
-	and tecla, aux								;solo quedan dos 0s
+	in temp, PIND 								;PIND debería tener un solo bit en 0 entre los bits 0 y 3
+	and tecla, temp								;solo quedan dos 0s
 
 	ret
 
 decod_tecla:
-	ldi aux, '0'
+	ldi temp, '0'
 	cpi tecla, TECLA_0
 	breq end_decod
 
-	inc aux
+	inc temp
 	cpi tecla, TECLA_1
 	breq end_decod
 
-	inc aux
-	cpi tecla_TECLA_3
+	inc temp
+	cpi tecla, TECLA_2
 	breq end_decod
 
-	inc aux
-	cpi tecla_TECLA_4
+	inc temp
+	cpi tecla, TECLA_3
+	breq end_decod
+
+	inc temp
+	cpi tecla, TECLA_4
 	breq end_decod
 	
-	inc aux
-	cpi tecla_TECLA_5
+	inc temp
+	cpi tecla, TECLA_5
 	breq end_decod
 	
-	inc aux
-	cpi tecla_TECLA_6
+	inc temp
+	cpi tecla, TECLA_6
 	breq end_decod
 	
-	inc aux
-	cpi tecla_TECLA_7
+	inc temp
+	cpi tecla, TECLA_7
 	breq end_decod
 	
-	inc aux
-	cpi tecla_TECLA_8
+	inc temp
+	cpi tecla, TECLA_8
 	breq end_decod
 	
-	inc aux
-	cpi tecla_TECLA_9
+	inc temp
+	cpi tecla, TECLA_9
 	breq end_decod
 	
-	ldi estado, STD_STATE
-	ldi aux, 0xFF
+	ldi mode, STD_STATE
+	ldi temp, 0xFF
 
 end_decod:
-	mov tecla, aux
+	mov tecla, temp
 	ret
 
 guardar_psw:
 	cpi contador, PSW_LIM 						;si es el cuarto número ingresado, modifico modo a normal
-	brne end_guardado
+	brne end_guardando
 
 	ldi mode, STD_STATE
 
 end_guardando:
 	st Y+, tecla
+	mov temp, tecla
+	rcall USART_Transmit
 
 	ret
 
@@ -182,8 +159,8 @@ validar_psw:
 	cpi contador, PSW_LIM
 	brne end_validar
 
-	ldi XL, low(eeprom_add_L)
-	ldi XH, high(eeprom_add_H)
+	mov XL, eeprom_address_low
+	mov XH, eeprom_address_high
 
 	ldi YL, low(passwordRAM)
 	ldi YH, high(passwordRAM)
@@ -191,74 +168,74 @@ validar_psw:
 validando:
 	dec contador
 
-	ld aux, Y+
+	ld temp, Y+
 	ld value_received, X+
 
-	cp aux, value_received
+	cp temp, value_received
 	brne incorrecto
 
-	cp contador, 0x00
+	cpi contador, 0x00
 	brne validando
 
 correcto:
 	;call abrir_cerradura
-	in aux, PORTB
-	ori aux, (1<<PORTB4)
-	out PORTB, aux
+	in temp, PORTB
+	ori temp, (1<<PORTB4)
+	out PORTB, temp
 
 	rjmp end_validar
 
 incorrecto:
-	in aux, PORTB
-	ori aux, (1<<PORTB5)
-	our PORTB, aux
+	in temp, PORTB
+	ori temp, (1<<PORTB5)
+	out PORTB, temp
 
 end_validar:
 	ret
 
 
 INT_teclado:
-	push aux
-	in aux, sreg
-	push aux
+	push temp
+	in temp, sreg
+	push temp
 
 	call inicio_conteo
 
 	in value_received, PIND
 	andi value_received, ~msk_entrada		;guardo el valor de las entradas en entrada_capturada
 
-	pop aux
-	out sreg, aux
-	pop aux
+	pop temp
+	out sreg, temp
+	pop temp
 
 	reti
 
 INT_timer0:
-	push aux
-	in aux, sreg
-	push aux
+	push temp
+	in temp, sreg
+	push temp
 
-	lds aux, PCMSK2
-	ori aux, msk_entrada					;vuelvo a habilitar los puertos de entrada para interrupcion de PC
-	sts PCMSK2, aux
+	lds temp, PCMSK2
+	ori temp, msk_entrada					;vuelvo a habilitar los puertos de entrada para interrupcion de PC
+	sts PCMSK2, temp
 
-	in aux, TCCR0B
-	andi aux, ~msk_prescaler
-	out TCCR0B, aux							;detengo el contador
+	in temp, TCCR0B
+	andi temp, ~msk_prescaler
+	out TCCR0B, temp							;detengo el contador
 
-	in aux, PIND
-	andi aux, ~msk_entrada
+	in temp, PIND
+	andi temp, ~msk_entrada
 
-	cpi aux, 0x00
+	cpi temp, 0x00
 	breq end_timer0
-	cp aux, value_received
+	cp temp, value_received
 	brne end_timer0							;si el cambio que detectó sigue estando
 
-	ldi estado, DET_STATE						;el cambio a realizar, para que el main detecte y haga
+	ldi mode, DET_STATE						;el cambio a realizar, para que el main detecte y haga
 
 end_timer0:
-	pop aux
-	out sreg, aux
-	pop aux
+	pop temp
+	out sreg, temp
+	pop temp
 
 	reti
