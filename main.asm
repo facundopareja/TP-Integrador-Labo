@@ -189,6 +189,7 @@ branch_detec_call:
 .include "keyboard_m.asm"
 .include "twi.asm"
 .include "rtc.asm"
+.include "servo.asm"
 .include "timer2.asm"
 
 

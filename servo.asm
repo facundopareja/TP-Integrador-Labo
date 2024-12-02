@@ -33,12 +33,12 @@ TIMER1_ON:
 	rjmp sigo
 	
 CLOSE_LOCK:	
-	ldi OCR1AH, high(OCR1A_central)
-	ldi OCR1AL, low(OCR1A_central)
+	ldi OCR1AH_reg, high(OCR1A_central)
+	ldi OCR1AL_reg, low(OCR1A_central)
 	rjmp OCR1A_CONFIG
 OPEN_LOCK:	
-	ldi OCR1AH, high(OCR1A_max)
-	ldi OCR1AL, low(OCR1A_max)
+	ldi OCR1AH_reg, high(OCR1A_max)
+	ldi OCR1AL_reg, low(OCR1A_max)
 
 OCR1A_CONFIG:				; Actualizar OCR1A
 	sts OCR1AH, OCR1AH_reg
