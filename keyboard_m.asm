@@ -4,7 +4,7 @@
 
 
 .def 	tecla = 			r20
-.def 	contador = 			r21
+.def 	contador = 			r8
 
 .equ 	msk_prescaler = 0b00000111
 .equ 	clk_antireb = 	0b00000101
@@ -138,7 +138,8 @@ end_decod:
 	ret
 
 guardar_psw:
-	cpi contador, PSW_LIM 						;si es el cuarto número ingresado, modifico modo a normal
+	mov temp, contador
+	cpi temp, PSW_LIM 						;si es el cuarto número ingresado, modifico modo a normal
 	brne end_guardando
 
 	ldi mode, LOCK_STATE
@@ -151,7 +152,8 @@ end_guardando:
 	ret
 
 validar_psw:
-	cpi contador, PSW_LIM
+	mov temp, contador
+	cpi temp, PSW_LIM
 	brne end_validar
 
 	clr eeprom_address_low
@@ -171,11 +173,12 @@ validando:
 	cp temp, value_received
 	brne incorrecto
 
-	cpi contador, 0x00
+	mov temp, contador
+	cpi temp, 0x00
 	brne validando
 
 correcto:
-	;call abrir_cerradura
+	rcall OPEN_LOCK
 	in temp, PORTB
 	ori temp, (1<<PORTB4)
 	out PORTB, temp
@@ -189,7 +192,6 @@ incorrecto:
 
 end_validar:
 	ret
-
 
 INT_teclado:
 	push temp

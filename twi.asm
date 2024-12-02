@@ -5,8 +5,8 @@
  *   Author: valen
  */ 
 
-; For a 50 kHz SCL frequency (standard mode): TWBR = (f_CPU/f_SCL - 16)/2*Prescaler = (8MHz/50kHz - 16)/2*1 = 72.
-.equ	TWBR_value = 72
+; For a 50 kHz SCL frequency (standard mode): TWBR = (f_CPU/f_SCL - 16)/2*Prescaler = (1MHz/50kHz - 16)/2*1 = 9.
+.equ	TWBR_value = 9
 ; From datashet DS3231 slave address is 0b1101000 = 0x68
 ; And 0x01 is minutes reg, 0x02 is hours reg
 .equ	DS3231_addr = 0b1101000
@@ -29,6 +29,7 @@ TWI_WRITE:
 	ldi temp, (DS3231_addr << 1) | 0
 	sts TWDR, temp			; 2) Transmit the DS3231 address with the R/W bit (LSB) cleared (write mode).
 	rcall TWINT_CLR			; Wait for completion
+	ret
 TWI_WRITE_MINUTES:
 	ldi temp, min_reg
 	sts TWDR, temp			; 3) Send the register address we want to write to.
@@ -36,6 +37,7 @@ TWI_WRITE_MINUTES:
 	; Send Data (Minutes)
     sts TWDR, minutes       ; 4) Transmit the data byte to be written.
 	rcall TWINT_CLR			; Wait for completion
+	ret
 TWI_WRITE_HOURS:
 	ldi temp, hr_reg
 	sts TWDR, temp			; 3) Send the register address we want to write to.

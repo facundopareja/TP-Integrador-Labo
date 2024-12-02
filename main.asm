@@ -4,31 +4,40 @@
 ; Created: 15/11/2024 08:18:40
 ; Author : Facundo
 ;
-.equ caracter_config_mode = 'C'
-.equ caracter_config_finished = 'F'
 
 .equ 	msk_entrada = 	0b11110000
 
+.equ caracter_config_mode = 'C'
+.equ caracter_config_finished = 'F'
+.equ caracter_config_RTC = 'T'
+.equ caracter_config_new_pwd = 'P'
 ; Possible states
-.equ CONFIG_STATE = 1
-.equ LOCK_STATE = 2
+; Basic lock state
+.equ LOCK_STATE = 1
+; Config state (we can read 4 numeric characters to use as code)
+.equ CONFIG_STATE = 2
+; Once we've received all 4 numbers we can store them in EEPROM
 .equ RECEIVED_CODE_STATE = 3
-.equ STNBY_STATE = 4
-.equ DET_STATE = 5
-.equ STD_STATE = 6
+; Once in config state, determine if a new pwd will be loaded (P) or the time will be set (T)
+.equ CONFIG_RTC_STATE = 5
+.equ CONFIG_NEW_PWD_STATE = 6
+.equ STNBY_STATE = 7
+.equ DET_STATE = 8
 ; Constants
 .equ LENGTH_CODE = 4
-.equ PSW_LIM = 4
+.equ PSW_lim = 4
 ; Register labels
 .DEF temp= r16
 .DEF mode= r17
 .DEF value_received = r18
 .DEF numbers_received = r19
+.DEF minutes = r21
+.DEF hours = r22
 ; RAM
 .dseg
 .ORG SRAM_START
 KEYCODE: .byte 4
-passwordRAM: .byte PSW_LIM
+passwordRAM: .byte LENGTH_CODE
 
 .cseg
 .ORG 0x0000
@@ -43,6 +52,9 @@ passwordRAM: .byte PSW_LIM
 .org PCI2addr
 	rjmp INT_teclado
 
+.org OC2Aaddr
+	rjmp TIMER2_COMP
+
 .org OC0Aaddr
 	rjmp INT_timer0
 
@@ -56,7 +68,7 @@ RESET:
 
 PORT_INITIALIZING:
 	in temp, ddrb
-	ori temp, 0b00110000 ; Mascara para activar PB4/PB5 como salida
+	ori temp, 0b00110010 ; Mascara para activar PB4/PB5/PB1 como salida
 	out ddrb, temp
 	ldi temp, msk_entrada
 	out DDRD, temp
@@ -65,35 +77,37 @@ PORT_INITIALIZING:
 	out PORTD, temp
 
 INICIALIZACION_PC:
-	lds aux, PCMSK2
-	ori aux, ~msk_entrada
-	sts PCMSK2, aux 			;habilito los puertos de la entrada para interrupcion PC
+	lds temp, PCMSK2
+	ori temp, ~msk_entrada
+	sts PCMSK2, temp 			;habilito los puertos de la entrada para interrupcion PC
 
-	in aux, PCIFR
-	ori aux, (1<<PCIF0)
-	out PCIFR, aux				;limpio el flag de interrupcion
+	in temp, PCIFR
+	ori temp, (1<<PCIF0)
+	out PCIFR, temp				;limpio el flag de interrupcion
 
-	lds aux, PCICR
-	ori aux, (1<<PCIE2)
-	sts PCICR, aux				;habilito la interrupcion de PC para el puerto D
+	lds temp, PCICR
+	ori temp, (1<<PCIE2)
+	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
 
 INICIALIZACION_TIMER0:
-	ldi aux, ~(11<<WGM00)			;modo normal
-	out TCCR0A, aux
+	ldi temp, ~(11<<WGM00)			;modo normal
+	out TCCR0A, temp
 
-	ldi aux, (0<<WGM02) | (0b000<<CS00) 	;clock detenido
-	out TCCR0B, aux
+	ldi temp, (0<<WGM02) | (0b000<<CS00) 	;clock detenido
+	out TCCR0B, temp
 
-	in aux, TIFR0
-	ori aux, (1<<TOV0)
-	out TIFR0, aux				;limpio el flag de interrupcion
+	in temp, TIFR0
+	ori temp, (1<<TOV0)
+	out TIFR0, temp				;limpio el flag de interrupcion
 
-	lds aux, TIMSK0
-	ori aux, (1<<TOIE0)
-	sts TIMSK0, aux				;habilito la interrupcion por Overflow
+	lds temp, TIMSK0
+	ori temp, (1<<TOIE0)
+	sts TIMSK0, temp				;habilito la interrupcion por Overflow
 
 MODULE_INITIALIZING:
 	rcall USART_Init
+	rcall TWI_Init
+	rcall TIMER1_Init
 	sei
 
 LOADING_CURRENT_PASSWORD:
@@ -121,14 +135,32 @@ start:
 
 CONFIG_MODE:
 	clr numbers_received
-	in temp, pinb
-	ori temp, 0b00110000 
-	out portb, temp ; Prendo LEDs
+	; Prendo LEDs
+	sbi PORTB, PB4
+	sbi PORTB, PB5
+; Once we're in config mode we loop until we receive an 'F', 'P' or 'T'
 WAIT_CHAR:
+	cpi mode, LOCK_STATE
+	breq END_CONFIG_MODE
+	cpi mode, CONFIG_NEW_PWD_STATE
+	breq WAIT_NEW_PWD
+	cpi mode, CONFIG_RTC_STATE
+	breq WAIT_TIME
+	rjmp WAIT_CHAR
+WAIT_TIME:
+	cpi mode, RECEIVED_CODE_STATE
+	breq STORE_TIME
+	rjmp WAIT_TIME
+WAIT_NEW_PWD:
 	cpi mode, RECEIVED_CODE_STATE
 	breq STORE_CODE
-	rjmp WAIT_CHAR
-	; Habria que guardar en RTC en caso de que se haya ingresado T
+	rjmp WAIT_NEW_PWD
+STORE_TIME:
+	ldi XH, high(KEYCODE)
+	ldi XL, low(KEYCODE)
+	rcall TIME_DECOD
+	rcall TWI_WRITE
+	rjmp END_CONFIG_MODE
 STORE_CODE:
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
@@ -143,9 +175,9 @@ LOOP_STORE:
 	cpi numbers_received, 0 
 	brne LOOP_STORE
 END_CONFIG_MODE:
-	in temp, pinb
-	andi temp, 0b11001111 
-	out portb, temp ; Apago leds
+	; Apago leds
+	cbi PORTB, PB4
+	cbi PORTB, PB5
 	rjmp start
 
 branch_detec_call:
@@ -155,4 +187,8 @@ branch_detec_call:
 .include "usart.asm"
 .include "eeprom.asm"
 .include "keyboard_m.asm"
+.include "twi.asm"
+.include "rtc.asm"
+.include "timer2.asm"
+
 

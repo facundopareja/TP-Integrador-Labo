@@ -5,7 +5,7 @@
  *   Author: valen
  */ 
 
-.DEF	seconds_passed = r23
+.DEF	seconds_passed = r9
 .equ	TIMEOUT = 10
  ; For a 1 Hz overflow (ideal for RTC functionality): OCR2A = f_clk*Tdesired/N - 1 = 32.768kHz*1sec/128 - 1 = 255.
 .equ	OCR2A_value = 0xFF
@@ -39,7 +39,8 @@ TIMER2_COMP:
 	push temp
 	
 	inc seconds_passed
-	cpi seconds_passed, TIMEOUT
+	mov temp, seconds_passed
+	cpi temp, TIMEOUT
 	; If equal, TIMEOUT reached --> light red led
 	; If not, keep waiting
 	
