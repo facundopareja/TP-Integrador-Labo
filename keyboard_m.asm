@@ -54,7 +54,7 @@ detectando:
 	call guardar_psw
 	call validar_psw
 
-	cpi mode, STD_STATE
+	cpi mode, LOCK_STATE
 	in temp, sreg
 	sbrc temp, sreg_z
 	ret
@@ -130,7 +130,7 @@ decod_tecla:
 	cpi tecla, TECLA_9
 	breq end_decod
 	
-	ldi mode, STD_STATE
+	ldi mode, LOCK_STATE
 	ldi temp, 0xFF
 
 end_decod:
@@ -141,7 +141,7 @@ guardar_psw:
 	cpi contador, PSW_LIM 						;si es el cuarto número ingresado, modifico modo a normal
 	brne end_guardando
 
-	ldi mode, STD_STATE
+	ldi mode, LOCK_STATE
 
 end_guardando:
 	st Y+, tecla
