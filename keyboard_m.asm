@@ -225,7 +225,7 @@ INT_timer0:
 	in temp, PIND
 	andi temp, ~msk_entrada
 
-	cpi temp, 0x00
+	cpi temp, 0x0F
 	breq end_timer0
 	cp temp, value_received
 	brne end_timer0							;si el cambio que detectó sigue estando

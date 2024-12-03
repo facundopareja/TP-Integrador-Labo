@@ -47,13 +47,13 @@ passwordRAM: .byte LENGTH_CODE
 	rjmp USART_Receive
 
 .ORG UTXCaddr
-	rjmp USART_Transmit ; La funcion esta incompleta
+	reti ; La funcion esta incompleta
 
 .org PCI2addr
 	rjmp INT_teclado
 
 .org OC2Aaddr
-	rjmp TIMER2_COMP
+	reti
 
 .org OC0Aaddr
 	rjmp INT_timer0
@@ -65,6 +65,11 @@ RESET:
 	OUT SPH, temp				
 	LDI temp, LOW(RAMEND)
 	OUT SPL, temp
+
+MODULE_INITIALIZING:
+	rcall USART_Init
+	rcall TWI_Init
+	rcall TIMER1_Init
 
 PORT_INITIALIZING:
 	in temp, ddrb
@@ -82,7 +87,7 @@ INICIALIZACION_PC:
 	sts PCMSK2, temp 			;habilito los puertos de la entrada para interrupcion PC
 
 	in temp, PCIFR
-	ori temp, (1<<PCIF0)
+	ori temp, (1<<PCIF2)
 	out PCIFR, temp				;limpio el flag de interrupcion
 
 	lds temp, PCICR
@@ -104,10 +109,6 @@ INICIALIZACION_TIMER0:
 	ori temp, (1<<TOIE0)
 	sts TIMSK0, temp				;habilito la interrupcion por Overflow
 
-MODULE_INITIALIZING:
-	rcall USART_Init
-	rcall TWI_Init
-	rcall TIMER1_Init
 	sei
 
 LOADING_CURRENT_PASSWORD:
@@ -115,8 +116,8 @@ LOADING_CURRENT_PASSWORD:
 	clr eeprom_address_high
 	clr eeprom_address_low
 TRANSMIT_LOOP:
-	lds r17, UCSR0A
-	sbrs r17, UDRE0
+	lds temp, UCSR0A
+	sbrs temp, UDRE0
 	rjmp TRANSMIT_LOOP
 	rcall EEPROM_READ
 	mov temp, eeprom_dato

@@ -8,10 +8,10 @@
 .def	OCR1AL_reg = r24
 .def	OCR1AH_reg = r25
 
-.equ	OCR1A_min = 499					; OCR1A_min = 1MHz*0.5ms/1 - 1
-.equ	OCR1A_central = 1499			; OCR1A_central = 1MHz*1.5ms/1 - 1
-.equ	OCR1A_max = 2499				; OCR1A_max = 1MHz*2.5ms/1 - 1
-.equ	ICR1_val = 20000 				; ICR1 = 1MHz/1*50Hz - 1	
+.equ	OCR1A_min = 124			; OCR1A_min = 1MHz*0.5ms/1 - 1 VALOR_PARA_1MHZ = 499
+.equ	OCR1A_central = 374			; OCR1A_central = 1MHz*1.5ms/1 - 1 - VALOR PARA 1 MHZ = 1499
+.equ	OCR1A_max = 624				; OCR1A_max = 1MHz*2.5ms/1 - 1 - VALOR PARA 1 MHZ = 2499
+.equ	ICR1_val = 4999				; ICR1 = 1MHz/1*50Hz - 1	VALOR PARA 1MHZ = 20000 
 
 ;--------- RUTINA DE CONFIGURACIÓN DEL TIMER 1 ----------------
 TIMER1_Init:
@@ -28,7 +28,7 @@ TIMER1_Init:
 	sts ICR1L, temp
 	
 TIMER1_ON:
-	ldi temp, (1 << WGM13) | (1 << WGM12) | (0 << CS12) | (0 << CS11) | (1 << CS10) 	; Modo 14 fast PWM: WGM1 = 1110. Prescaler = 8 (CS1 = 001)
+	ldi temp, (1 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (1 << CS10) 	; Modo 14 fast PWM: WGM1 = 1110. Prescaler = 8 (CS1 = 001)
 	sts TCCR1B, temp
 	rjmp sigo
 	
