@@ -49,7 +49,7 @@ passwordRAM: .byte LENGTH_CODE
 .ORG UTXCaddr
 	reti ; La funcion esta incompleta
 
-.org PCI2addr
+.org PCI1addr
 	rjmp INT_teclado
 
 .org OC2Aaddr
@@ -75,23 +75,30 @@ PORT_INITIALIZING:
 	in temp, ddrb
 	ori temp, 0b00110010 ; Mascara para activar PB4/PB5/PB1 como salida
 	out ddrb, temp
-	ldi temp, msk_entrada
-	out DDRD, temp
 
-	ldi temp, ~msk_entrada						;pullup y salidas en 0
+	ldi temp, msk_entrada
+	out DDRD, temp				;ultimos 4 bit de D como salida
+
+	clr temp
+	out DDRC, temp 				;primeros 4 bit de C como entrada
+
+	clr temp				;salidas en 0
 	out PORTD, temp
 
+	ldi temp, ~msk_entrada 			;pullup en bits de entrada
+	out PORTC, temp
+
 INICIALIZACION_PC:
-	lds temp, PCMSK2
+	lds temp, PCMSK1
 	ori temp, ~msk_entrada
-	sts PCMSK2, temp 			;habilito los puertos de la entrada para interrupcion PC
+	sts PCMSK1, temp 			;habilito los puertos de la entrada para interrupcion PC
 
 	in temp, PCIFR
-	ori temp, (1<<PCIF2)
+	ori temp, (1<<PCIF1)
 	out PCIFR, temp				;limpio el flag de interrupcion
 
 	lds temp, PCICR
-	ori temp, (1<<PCIE2)
+	ori temp, (1<<PCIE1)
 	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
 
 INICIALIZACION_TIMER0:
