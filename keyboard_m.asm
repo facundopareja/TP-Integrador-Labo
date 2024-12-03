@@ -31,9 +31,9 @@ inicio_conteo: 									;temp, contador
 	ori temp, clk_antireb
 	out TCCR0B, temp								;inicia el conteo, clk/1024
 
-	lds temp, PCMSK2
+	lds temp, PCMSK1
 	andi temp, msk_entrada						;deshabilito los puertos de entrada para interrupcion de PC
-	sts PCMSK2, temp
+	sts PCMSK1, temp
 
 	ret
 
@@ -68,13 +68,13 @@ buscar_tecla:
 	sec
 
 busc_fila:
-	sbis PIND, PIND0
+	sbis PINC, PINC0
 	rjmp end_busc
-	sbis PIND, PIND1
+	sbis PINC, PINC1
 	rjmp end_busc
-	sbis PIND, PIND2
+	sbis PINC, PINC2
 	rjmp end_busc
-	sbis PIND, PIND3
+	sbis PINC, PINC3
 	rjmp end_busc
 
 	cpi tecla, teclado_fin
@@ -84,7 +84,7 @@ busc_fila:
 	rjmp busc_fila
 
 end_busc:
-	in temp, PIND 								;PIND debería tener un solo bit en 0 entre los bits 0 y 3
+	in temp, PINC 								;PIND debería tener un solo bit en 0 entre los bits 0 y 3
 	and tecla, temp								;solo quedan dos 0s
 
 	ret
@@ -200,7 +200,7 @@ INT_teclado:
 
 	call inicio_conteo
 
-	in value_received, PIND
+	in value_received, PINC
 	andi value_received, ~msk_entrada		;guardo el valor de las entradas en entrada_capturada
 
 	pop temp
@@ -214,15 +214,15 @@ INT_timer0:
 	in temp, sreg
 	push temp
 
-	lds temp, PCMSK2
+	lds temp, PCMSK1
 	ori temp, msk_entrada					;vuelvo a habilitar los puertos de entrada para interrupcion de PC
-	sts PCMSK2, temp
+	sts PCMSK1, temp
 
 	in temp, TCCR0B
 	andi temp, ~msk_prescaler
 	out TCCR0B, temp							;detengo el contador
 
-	in temp, PIND
+	in temp, PINC
 	andi temp, ~msk_entrada
 
 	cpi temp, 0x0F
