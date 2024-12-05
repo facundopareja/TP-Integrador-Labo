@@ -273,6 +273,10 @@ INT_teclado:
 
 	call inicio_conteo
 
+	in temp, PORTD
+	andi temp, ~msk_entrada
+	out PORTD, temp
+
 	in valor, PINC
 	ldi temp, ~msk_entrada							;guardo el valor de las entradas en entrada_capturada
 	and valor, temp
@@ -299,6 +303,10 @@ INT_timer0:
 	in temp, TCCR0B
 	andi temp, ~msk_prescaler
 	out TCCR0B, temp							;detengo el contador
+	
+	in temp, PORTD
+	andi temp, ~msk_entrada
+	out PORTD, temp
 
 	in temp, PINC
 	andi temp, ~msk_entrada
