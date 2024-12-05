@@ -21,6 +21,12 @@
 .equ 	TECLA_7 = 		0b11010111
 .equ 	TECLA_8 = 		0b10111110
 .equ 	TECLA_9 = 		0b10111101
+.equ 	TECLA_10 = 		0b10111011
+.equ 	TECLA_11 = 		0b10110111
+.equ 	TECLA_12 = 		0b01111110
+.equ 	TECLA_13 = 		0b01111101
+.equ 	TECLA_14 = 		0b01111011
+.equ 	TECLA_15 =		0b01110111
 
 branch_detec:
  	clr contador
@@ -151,9 +157,30 @@ decod_tecla:
 	inc temp
 	cpi tecla, TECLA_9
 	breq end_decod
-	
-	ldi mode, LOCK_STATE
-	ldi temp, 0xFF
+
+	inc temp
+	cpi tecla, TECLA_10
+	breq end_decod
+
+	inc temp
+	cpi tecla, TECLA_11
+	breq end_decod
+
+	inc temp
+	cpi tecla, TECLA_12
+	breq end_decod
+
+	inc temp
+	cpi tecla, TECLA_13
+	breq end_decod
+
+	inc temp
+	cpi tecla, TECLA_14
+	breq end_decod
+
+	inc temp
+	cpi tecla, TECLA_15
+	breq end_decod
 
 end_decod:
 	mov tecla, temp
