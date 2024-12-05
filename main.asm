@@ -53,7 +53,7 @@ passwordRAM: .byte LENGTH_CODE
 	rjmp INT_teclado
 
 .org OC2Aaddr
-	reti
+	rjmp TIMER2_COMP
 
 .org OC0Aaddr
 	rjmp INT_timer0
@@ -102,19 +102,20 @@ INICIALIZACION_PC:
 	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
 
 INICIALIZACION_TIMER0:
-	ldi temp, ~(11<<WGM00)			;modo normal
+	ldi temp, ~(11<<WGM00)						;modo normal
 	out TCCR0A, temp
 
-	ldi temp, (0<<WGM02) | (0b000<<CS00) 	;clock detenido
+	in temp, TCCR0B
+	andi temp, ~(0b111<<CS00) 					;clock detenido
 	out TCCR0B, temp
 
 	in temp, TIFR0
 	ori temp, (1<<TOV0)
-	out TIFR0, temp				;limpio el flag de interrupcion
+	out TIFR0, temp								;limpio el flag de interrupcion
 
 	lds temp, TIMSK0
 	ori temp, (1<<TOIE0)
-	sts TIMSK0, temp				;habilito la interrupcion por Overflow
+	sts TIMSK0, temp							;habilito la interrupcion por Overflow
 
 	sei
 
