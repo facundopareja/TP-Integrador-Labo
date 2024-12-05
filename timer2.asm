@@ -25,7 +25,7 @@ SYNC_LOOP:
 	
 	ldi temp, OCR2A_value
 	sts OCR2A, temp
-	ldi temp, (1 << CS22) | (0 << CS21) | (1 << CS20)	; Prescaler = 128
+	ldi temp, (0 << CS22) | (1 << CS21) | (1 << CS20)	; Prescaler = 64, en 128 para 1mhz
 	sts TCCR2B, temp
 	ldi temp, (1 << OCIE2A)								; Enable the Output Compare Match A interrupt
 	sts TIMSK2, temp
