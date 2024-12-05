@@ -55,7 +55,7 @@ passwordRAM: .byte LENGTH_CODE
 .org OC2Aaddr
 	rjmp TIMER2_COMP
 
-.org OC0Aaddr
+.org OVF0addr
 	rjmp INT_timer0
 
 .ORG INT_VECTORS_SIZE
@@ -102,9 +102,6 @@ INICIALIZACION_PC:
 	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
 
 INICIALIZACION_TIMER0:
-	ldi temp, ~(11<<WGM00)						;modo normal
-	out TCCR0A, temp
-
 	in temp, TCCR0B
 	andi temp, ~(0b111<<CS00) 					;clock detenido
 	out TCCR0B, temp
