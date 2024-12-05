@@ -10,7 +10,7 @@
 ; USART set in asynchronous mode.
 .equ USART_mode = (0<<UMSEL01) | (0<<UMSEL00)
  ; Enabled transmitter, receptor and both interrupts (actually only the reception one).
-.equ UCSR0B_values =  (1<<RXCIE0) | (1<<TXCIE0) | (1<<RXEN0) | (1<<TXEN0) 
+.equ UCSR0B_values =  (1<<RXCIE0) | (0<<TXCIE0) | (1<<RXEN0) | (1<<TXEN0) 
 
 ; For USART configuration.
 USART_Init:
@@ -33,10 +33,10 @@ USART_Receive:
 	; After receiving a character through SERIAL port, we check, in order
 	; 1) If the character is 'F' (if it is we return to LOCK_STATE and end the interruption).
 	; 2) If we are already in CONFIG_STATE and 'P' has been previously pressed 
-	;    (if it's the case, we can go straight to verifying if the received character is a number or not).
+	;    (if that's the case, we can go straight to verifying if the received character is a number or not).
 	; 3) If the character is 'C' (if it is we set CONFIG_STATE and end the interruption).
 	; 4) If the character is 'T' (if it is we check being in CONFIG_STATE, set CONFIG_RTC_STATE end the interruption).
-	; 4) If the character is 'P' (if it is we check being in CONFIG_STATE, set CONFIG_NEW_PWD_STATE end the interruption).
+	; 4) If the character is 'P' (if it is we check being in CONFIG_STATE, set CONFIG_NEW_PWD_STATE end the interruption)
 	lds value_received, UDR0
 	mov temp, value_received
 	rcall USART_Transmit
@@ -51,7 +51,7 @@ USART_Receive:
 	breq SET_RTC_CONFIG_MODE
 	cpi value_received, caracter_config_new_pwd
 	breq SET_NEW_PWD_CONFIG_MODE
-	brne FIN
+	rjmp FIN
 SET_LOCK_MODE:
 	ldi mode, LOCK_STATE
 	rjmp FIN
