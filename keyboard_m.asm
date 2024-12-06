@@ -298,7 +298,7 @@ INT_timer0:
 	out PCIFR, temp								;limpio el flag de interrupcion
 
 	lds temp, PCMSK1
-	ori temp, msk_entrada						;vuelvo a habilitar los puertos de entrada para interrupcion de PC
+	ori temp, ~msk_entrada						;vuelvo a habilitar los puertos de entrada para interrupcion de PC
 	sts PCMSK1, temp
 
 	in temp, TCCR0B
