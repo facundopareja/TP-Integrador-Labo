@@ -182,6 +182,8 @@ decod_tecla:
 	ldi temp, '#'
 	cpi tecla, TECLA_num
 	breq end_decod
+	
+	ldi tecla, 0xFF
 
 end_decod:
 	mov tecla, temp
