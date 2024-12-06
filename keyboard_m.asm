@@ -11,22 +11,23 @@
 .equ 	teclado_ini = 	0b11110111
 .equ 	teclado_fin = 	0b01111111
 
-.equ 	TECLA_0 = 		0b11101110
-.equ 	TECLA_1 = 		0b11101101
-.equ 	TECLA_2 = 		0b11101011
-.equ 	TECLA_3 = 		0b11100111
+.equ 	TECLA_1 = 		0b11101110
+.equ 	TECLA_2 = 		0b11101101
+.equ 	TECLA_3 = 		0b11101011
 .equ 	TECLA_4 = 		0b11011110
 .equ 	TECLA_5 = 		0b11011101
 .equ 	TECLA_6 = 		0b11011011
-.equ 	TECLA_7 = 		0b11010111
-.equ 	TECLA_8 = 		0b10111110
-.equ 	TECLA_9 = 		0b10111101
-.equ 	TECLA_10 = 		0b10111011
-.equ 	TECLA_11 = 		0b10110111
-.equ 	TECLA_12 = 		0b01111110
-.equ 	TECLA_13 = 		0b01111101
-.equ 	TECLA_14 = 		0b01111011
-.equ 	TECLA_15 =		0b01110111
+.equ 	TECLA_7 = 		0b10111110
+.equ 	TECLA_8 = 		0b10111101
+.equ 	TECLA_9 = 		0b10111011
+.equ 	TECLA_0 = 		0b01111101
+.equ 	TECLA_A = 		0b11100111
+.equ 	TECLA_B = 		0b11010111
+.equ 	TECLA_C = 		0b10110111
+.equ 	TECLA_D =		0b01110111
+.equ 	TECLA_ast = 	0b01111110
+.equ 	TECLA_NUM = 	0b01111011
+
 
 branch_detec:
  	clr contador
@@ -158,28 +159,28 @@ decod_tecla:
 	cpi tecla, TECLA_9
 	breq end_decod
 
-	inc temp
-	cpi tecla, TECLA_10
+	ldi temp, 'A'
+	cpi tecla, TECLA_A
 	breq end_decod
 
 	inc temp
-	cpi tecla, TECLA_11
+	cpi tecla, TECLA_B
 	breq end_decod
 
 	inc temp
-	cpi tecla, TECLA_12
+	cpi tecla, TECLA_C
 	breq end_decod
 
 	inc temp
-	cpi tecla, TECLA_13
+	cpi tecla, TECLA_D
 	breq end_decod
 
-	inc temp
-	cpi tecla, TECLA_14
+	ldi temp, '*'
+	cpi tecla, TECLA_ast
 	breq end_decod
 
-	inc temp
-	cpi tecla, TECLA_15
+	ldi temp, '#'
+	cpi tecla, TECLA_num
 	breq end_decod
 
 end_decod:
