@@ -238,13 +238,18 @@ correcto:
 	in temp, PORTB
 	ori temp, (1<<PORTB4)
 	out PORTB, temp
-
+	ldi mode, LEDS_ON_WAITING
+	call TIMER2_START
+	call loop_leds_on
 	rjmp end_validar
 
 incorrecto:
 	in temp, PORTB
 	ori temp, (1<<PORTB5)
 	out PORTB, temp
+	ldi mode, LEDS_ON_WAITING
+	call TIMER2_START
+	call loop_leds_on
 
 end_validar:
 	ret
@@ -328,3 +333,8 @@ end_timer0:
 	pop temp
 
 	reti
+
+loop_leds_on:
+	cpi mode, LEDS_ON_DONE
+	brne loop_leds_on
+	ret

@@ -23,6 +23,8 @@
 .equ CONFIG_NEW_PWD_STATE = 6
 .equ STNBY_STATE = 7
 .equ DET_STATE = 8
+.equ LEDS_ON_WAITING = 9
+.equ LEDS_ON_DONE = 10
 ; Constants
 .equ LENGTH_CODE = 4
 .equ PSW_lim = 4
@@ -58,6 +60,9 @@ passwordRAM: .byte LENGTH_CODE
 .org OVF0addr
 	rjmp INT_timer0
 
+.org OVF2addr
+	rjmp TIMER2_COMP
+
 .ORG INT_VECTORS_SIZE
 RESET:
 	CLI
@@ -70,6 +75,7 @@ MODULE_INITIALIZING:
 	rcall USART_Init
 	rcall TWI_Init
 	rcall TIMER1_Init
+	rcall TIMER2_Init
 
 PORT_INITIALIZING:
 	in temp, ddrb
@@ -196,6 +202,6 @@ branch_detec_call:
 .include "twi.asm"
 .include "rtc.asm"
 .include "servo.asm"
-.include "timer2.asm"
-
+;.include "timer2.asm"
+.include "timer2_alt.asm"
 
