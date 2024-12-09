@@ -202,6 +202,5 @@ branch_detec_call:
 .include "twi.asm"
 .include "rtc.asm"
 .include "servo.asm"
-;.include "timer2.asm"
 .include "timer2_alt.asm"
 

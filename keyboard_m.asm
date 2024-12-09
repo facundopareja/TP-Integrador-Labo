@@ -48,6 +48,9 @@ detectando:
 	call decod_tecla
 	call guardar_psw
 
+	cpi tecla, 0xFF
+	breq end_detectando
+
 	mov temp, contador
 	cpi temp, PSW_LIM
 	breq end_detectando
@@ -183,7 +186,7 @@ decod_tecla:
 	cpi tecla, TECLA_num
 	breq end_decod
 	
-	ldi tecla, 0xFF
+	ldi temp, 0xFF
 
 end_decod:
 	mov tecla, temp
@@ -235,21 +238,21 @@ validando:
 correcto:
 	call OPEN_LOCK
 
-	in temp, PORTB
-	ori temp, (1<<PORTB4)
-	out PORTB, temp
+	sbi PORTB, PB4
 	ldi mode, LEDS_ON_WAITING
+	call OPEN_LOCK
 	call TIMER2_START
 	call loop_leds_on
+	call CLOSE_LOCK
+	cbi PORTB, PB4
 	rjmp end_validar
 
 incorrecto:
-	in temp, PORTB
-	ori temp, (1<<PORTB5)
-	out PORTB, temp
+	sbi PORTB, PB5
 	ldi mode, LEDS_ON_WAITING
 	call TIMER2_START
 	call loop_leds_on
+	cbi PORTB, PB5
 
 end_validar:
 	ret

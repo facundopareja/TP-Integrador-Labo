@@ -289,10 +289,8 @@ branch_detec_call:
 
 .include "usart.asm"
 .include "eeprom.asm"
-.include "keyboard_m.asm"
 .include "sec_test.asm"
 .include "rtc.asm"
 .include "servo.asm"
-.include "timer2.asm"
 
 
