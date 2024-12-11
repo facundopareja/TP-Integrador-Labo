@@ -19,8 +19,10 @@
 .equ	MT_DATA_ACK = 0x28
 .equ	MT_DATA_NACK = 0x38
 .equ	MR_SLA_ACK = 0x40
+.equ	MR_DATA_ACK = 0x50
 .equ	MR_DATA_NACK = 0x58
 .equ	ERROR_STATE = 0xFF
+.DEF	twi_status = r24
 
 TWI_Init:
 	ldi temp, TWBR_value
@@ -43,7 +45,8 @@ TWI_WRITE:
 	; Send Slave Address (Write Mode)
 	ldi temp, (DS3231_addr << 1) | (0 << TWGCE)
 	sts TWDR, temp			; Transmit the DS3231 address with the R/W bit (LSB) cleared (write mode).
-	rcall TWSR_SLAW_ACK_Check ; Check if SLA transmit correct
+	ldi twi_status, MT_SLA_ACK
+	rcall TWSR_Status_Check ; Check if SLA transmit correct
 	cpi temp, ERROR_STATE
 	;breq twi_error_go_back
 	in temp, SREG
@@ -53,10 +56,12 @@ TWI_WRITE:
 TWI_WRITE_SECONDS:
 	ldi temp, sec_reg
 	sts TWDR, temp			; Send the register address we want to write to.
-	rcall TWSR_DataT_ACK_Check ; Check if SLA transmit correct
+	ldi twi_status, MT_DATA_ACK
+	rcall TWSR_Status_Check
 	; Send Data (Hours)
     sts TWDR, hours			; Transmit the data byte to be written.
-	rcall TWSR_DataT_ACK_Check ; Check if Data transmit correct
+	ldi twi_status, MT_DATA_ACK
+	rcall TWSR_Status_Check
 	;cpi temp, ERROR_STATE
 	;breq twi_error_go_back
 
@@ -70,7 +75,8 @@ TWI_READ:
 	; Send Slave Address (Write Mode)
 	ldi temp, (DS3231_addr << 1) | (0 << TWGCE) 
 	sts TWDR, temp			; Transmit the DS3231 address with the R/W bit cleared (write mode).
-	rcall TWSR_SLAW_ACK_Check ; Check if sla + W transmitted ok
+	ldi twi_status, MT_SLA_ACK
+	rcall TWSR_Status_Check ; Check if sla + W transmitted ok
 	;cpi temp, ERROR_STATE
 	;breq twi_error_go_back
 
@@ -78,7 +84,8 @@ TWI_READ:
 TWI_READ_SECONDS:
 	ldi temp, sec_reg
 	sts TWDR, temp			; Send the register address we want to read from.
-	rcall TWSR_DataT_ACK_Check	; Wait for completion for sla + w transmitted
+	ldi twi_status,  MT_DATA_ACK
+	rcall TWSR_Status_Check	; Wait for completion for sla + w transmitted
 	;cpi temp, ERROR_STATE
 	;breq twi_error_go_back
 
@@ -89,13 +96,15 @@ TWI_READ_SECONDS:
 
 	ldi temp, (DS3231_addr << 1) | (1 << TWGCE) 
 	sts TWDR, temp			; Transmit the DS3231 address with the R/W bit set (read mode).
-	rcall TWSR_SLAR_ACK_Check	; Wait for completion for sla + r transmitted
+	ldi twi_status, MR_SLA_ACK
+	rcall TWSR_Status_Check	; Wait for completion for sla + r transmitted
 	;cpi temp, ERROR_STATE
 	;breq twi_error_go_back
 
 	; Read Data (Hours)
 	rcall SEND_NACK
-	rcall TWSR_DataR_ACK_Check	; Wait for completion for data received
+	ldi twi_status, MR_DATA_NACK
+	rcall TWSR_Status_Check	; Wait for completion for data received
 	;cpi temp, ERROR_STATE
 	;breq twi_error_go_back
 
@@ -143,6 +152,12 @@ TWSR_Check:
 	lds temp, TWSR			; Check value of TWI Status Register.
 	andi temp, 0b11111000	; Mask prescaler bits.  
 	ret
+TWSR_Status_Check:
+	rcall TWINT_CLR			; Wait for completion
+	rcall TWSR_Check
+	cp temp, twi_status
+	brne TWI_ERROR			; If status different from MT_SLA_ACK (0x18) go to ERROR.
+	ret
 TWSR_START_Check:
 	rcall TWSR_Check
 	cpi temp, START
@@ -152,30 +167,6 @@ TWSR_Repeated_START_Check:
 	rcall TWSR_Check
 	cpi temp, REPEATED_START
 	brne TWI_ERROR			; If status different from START (0x08) go to ERROR.
-	ret
-TWSR_SLAW_ACK_Check:
-	rcall TWINT_CLR			; Wait for completion
-	rcall TWSR_Check
-	cpi temp, MT_SLA_ACK
-	brne TWI_ERROR			; If status different from MT_SLA_ACK (0x18) go to ERROR.
-	ret
-TWSR_DataT_ACK_Check:
-	rcall TWINT_CLR			; Wait for completion
-	rcall TWSR_Check
-	cpi temp, MT_DATA_ACK
-	brne TWI_ERROR			; If status different from MT_Data_ACK (0x28) go to ERROR.
-	ret
-TWSR_SLAR_ACK_Check:
-	rcall TWINT_CLR			; Wait for completion
-	rcall TWSR_Check
-	cpi temp, MR_SLA_ACK
-	brne TWI_ERROR			; If status different from MT_SLA_ACK (0x18) go to ERROR.
-	ret
-TWSR_DataR_ACK_Check:
-	rcall TWINT_CLR			; Wait for completion
-	rcall TWSR_Check
-	cpi temp, MR_DATA_NACK			; If status different from MT_Data_ACK (0x28) go to ERROR.
-	brne TWI_ERROR
 	ret
 
 SEND_ACK:
