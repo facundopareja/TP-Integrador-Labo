@@ -291,6 +291,4 @@ branch_detec_call:
 .include "eeprom.asm"
 .include "sec_test.asm"
 .include "rtc.asm"
-.include "servo.asm"
-
 

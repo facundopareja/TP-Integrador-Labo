@@ -7,8 +7,6 @@
 
 .DEF	counter = r11
 .DEF	seconds_passed = r9
-.equ	ONE_SECOND = 61
-.equ	TIMEOUT = 10 ; Deberia ser 160 para 1mhz 
 .equ	prescaler = (1 << CS22) | (1 << CS21) | (1 << CS20) ; Prescaler = 1024
 .equ	stop_clock = (0 << CS22) | (0 << CS21) | (0 << CS20)
 

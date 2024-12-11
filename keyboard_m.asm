@@ -6,8 +6,6 @@
 .def 	contador = 			r8
 .def 	valor = 			r10
 
-.equ 	msk_prescaler = 0b00000111
-.equ 	clk_antireb = 	0b00000101
 .equ 	teclado_ini = 	0b11110111
 .equ 	teclado_fin = 	0b01111111
 

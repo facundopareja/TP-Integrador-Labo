@@ -4,6 +4,7 @@
 ; Created: 15/11/2024 08:18:40
 ; Author : Facundo
 ;
+.include "constants_16mhz.asm"
 
 .equ 	msk_entrada = 	0b11110000
 

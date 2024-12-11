@@ -8,11 +8,6 @@
 .def	OCR1AL_reg = r24
 .def	OCR1AH_reg = r25
 
-.equ	OCR1A_min = 124			; OCR1A_min = 1MHz*0.5ms/1 - 1 VALOR_PARA_1MHZ = 499
-.equ	OCR1A_central = 374			; OCR1A_central = 1MHz*1.5ms/1 - 1 - VALOR PARA 1 MHZ = 1499
-.equ	OCR1A_max = 624				; OCR1A_max = 1MHz*2.5ms/1 - 1 - VALOR PARA 1 MHZ = 2499
-.equ	ICR1_val = 4999				; ICR1 = 1MHz/1*50Hz - 1	VALOR PARA 1MHZ = 20000 
-
 ;--------- RUTINA DE CONFIGURACIÓN DEL TIMER 1 ----------------
 TIMER1_Init:
 	; El ancho de pulso empieza siendo de 1.5ms para que la posición inicial sea de 0°

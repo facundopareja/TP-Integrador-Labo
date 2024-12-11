@@ -17,8 +17,9 @@
 .equ	REPEATED_START = 0x10
 .equ	MT_SLA_ACK = 0x18
 .equ	MT_DATA_ACK = 0x28
+.equ	MT_DATA_NACK = 0x38
 .equ	MR_SLA_ACK = 0x40
-.equ	MR_DATA_ACK = 0x50
+.equ	MR_DATA_NACK = 0x58
 .equ	ERROR_STATE = 0xFF
 
 TWI_Init:
@@ -52,7 +53,7 @@ TWI_WRITE:
 TWI_WRITE_SECONDS:
 	ldi temp, sec_reg
 	sts TWDR, temp			; Send the register address we want to write to.
-	rcall TWSR_SLAW_ACK_Check ; Check if SLA transmit correct
+	rcall TWSR_DataT_ACK_Check ; Check if SLA transmit correct
 	; Send Data (Hours)
     sts TWDR, hours			; Transmit the data byte to be written.
 	rcall TWSR_DataT_ACK_Check ; Check if Data transmit correct
@@ -77,7 +78,7 @@ TWI_READ:
 TWI_READ_SECONDS:
 	ldi temp, sec_reg
 	sts TWDR, temp			; Send the register address we want to read from.
-	rcall TWSR_SLAW_ACK_Check	; Wait for completion for sla + w transmitted
+	rcall TWSR_DataT_ACK_Check	; Wait for completion for sla + w transmitted
 	;cpi temp, ERROR_STATE
 	;breq twi_error_go_back
 
@@ -118,11 +119,11 @@ TWI_START:
 	sts TWCR, temp
 	rjmp WAIT_COMPLETION
 TWINT_CLR:
-	ldi temp, (1 << TWEN) | (1 << TWINT)
+	ldi temp, (1 << TWEN) | (1 << TWINT) 
     sts TWCR, temp
 WAIT_COMPLETION:
 	lds temp, TWCR
-	sbrc temp, TWINT			; Wait until the operation to complete. 
+	sbrs temp, TWINT			; Wait until the operation to complete. 
 	rjmp WAIT_COMPLETION
 	ret
 TWI_STOP:
@@ -173,8 +174,8 @@ TWSR_SLAR_ACK_Check:
 TWSR_DataR_ACK_Check:
 	rcall TWINT_CLR			; Wait for completion
 	rcall TWSR_Check
-	cpi temp, MR_DATA_ACK
-	brne TWI_ERROR			; If status different from MT_Data_ACK (0x28) go to ERROR.
+	cpi temp, MR_DATA_NACK			; If status different from MT_Data_ACK (0x28) go to ERROR.
+	brne TWI_ERROR
 	ret
 
 SEND_ACK:
