@@ -33,17 +33,20 @@ USART_Receive:
 	; After receiving a character through SERIAL port, we check, in order
 	; 1) If the character is 'F' (if it is we return to LOCK_STATE and end the interruption).
 	; 2) If we are already in CONFIG_STATE and 'P' has been previously pressed 
-	;    (if that's the case, we can go straight to verifying if the received character is a number or not).
+	;    (if it's the case, we can go straight to verifying if the received character is a number or not).
 	; 3) If the character is 'C' (if it is we set CONFIG_STATE and end the interruption).
 	; 4) If the character is 'T' (if it is we check being in CONFIG_STATE, set CONFIG_RTC_STATE end the interruption).
-	; 4) If the character is 'P' (if it is we check being in CONFIG_STATE, set CONFIG_NEW_PWD_STATE end the interruption)
+	; 4) If the character is 'P' (if it is we check being in CONFIG_STATE, set CONFIG_NEW_PWD_STATE end the interruption).
 	lds value_received, UDR0
 	mov temp, value_received
 	rcall USART_Transmit
+	rcall TRANSMIT_SPACE
 	cpi value_received, caracter_config_finished
 	breq SET_LOCK_MODE
 	cpi mode, CONFIG_NEW_PWD_STATE
-	breq VERIFY_NUMBER
+	breq VERIFY_NUMBER	
+	cpi mode, CONFIG_RTC_STATE
+	breq VERIFY_TIME
 	cpi value_received, caracter_config_mode
 	breq SET_CONFIG_MODE
 	; Check for 'T' and 'P' character.
@@ -96,13 +99,23 @@ FRST_TIME_DIGIT:
 SCND_TIME_DIGIT:
 	cpi value_received, '0'
 	brlo FIN
-	cpi value_received, '3' + 1		; if HH:MM second H > 3 --> end
+	ldi XH, high(KEYCODE)
+	ldi XL, low(KEYCODE)
+	ld temp, X
+	cpi temp, '2'
+	breq SCND_DIGIT_LOWER_2
+	cpi value_received, '9' + 1		; if HH:MM second H > 9 --> end
 	brsh FIN
 	rjmp LOAD_X_POINTER
 THRD_TIME_DIGIT:
 	cpi value_received, '0'
 	brlo FIN
-	cpi value_received, '2' + 1		; if HH:MM first M > 5 --> end
+	cpi value_received, '5' + 1		; if HH:MM first M > 5 --> end
+	brsh FIN
+	rjmp LOAD_X_POINTER
+
+SCND_DIGIT_LOWER_2:
+	cpi value_received, '3' + 1		; if HH:MM second H > 3 && first digit H = 2 --> end
 	brsh FIN
 	rjmp LOAD_X_POINTER
 
