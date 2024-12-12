@@ -49,9 +49,6 @@ passwordRAM: .byte LENGTH_CODE
 .ORG URXCaddr
 	rjmp USART_Receive
 
-.ORG UTXCaddr
-	reti ; La funcion esta incompleta
-
 .org PCI1addr
 	rjmp INT_teclado
 
