@@ -2,36 +2,46 @@
 ;entradas en pullup, en etapa de deteccion las salidas en 0, en etapa de busqueda salidas en 1 y rotando
 
 
+
 .def 	tecla = 			r20
 .def 	contador = 			r8
-.def 	valor = 			r10
 
-.equ 	teclado_ini = 	0b11110111
+.equ 	msk_prescaler = 0b00000111
+.equ 	clk_antireb = 	0b00000101
+.equ 	teclado_ini = 	0b11101111
 .equ 	teclado_fin = 	0b01111111
 
-.equ 	TECLA_1 = 		0b11101110
-.equ 	TECLA_2 = 		0b11101101
-.equ 	TECLA_3 = 		0b11101011
+.equ 	TECLA_0 = 		0b11101110
+.equ 	TECLA_1 = 		0b11101101
+.equ 	TECLA_2 = 		0b11101011
+.equ 	TECLA_3 = 		0b11100111
 .equ 	TECLA_4 = 		0b11011110
 .equ 	TECLA_5 = 		0b11011101
 .equ 	TECLA_6 = 		0b11011011
-.equ 	TECLA_7 = 		0b10111110
-.equ 	TECLA_8 = 		0b10111101
-.equ 	TECLA_9 = 		0b10111011
-.equ 	TECLA_0 = 		0b01111101
-.equ 	TECLA_A = 		0b11100111
-.equ 	TECLA_B = 		0b11010111
-.equ 	TECLA_C = 		0b10110111
-.equ 	TECLA_D =		0b01110111
-.equ 	TECLA_ast = 	0b01111110
-.equ 	TECLA_NUM = 	0b01111011
+.equ 	TECLA_7 = 		0b11010111
+.equ 	TECLA_8 = 		0b10111110
+.equ 	TECLA_9 = 		0b10111101
 
+inicio_conteo: 									;temp, contador
+	clr temp
+	out TCNT0, temp								;reinicio el contador
+
+	in temp, TCCR0B
+	andi temp, ~msk_prescaler
+	ori temp, clk_antireb
+	out TCCR0B, temp								;inicia el conteo, clk/1024
+
+	lds temp, PCMSK2
+	andi temp, msk_entrada						;deshabilito los puertos de entrada para interrupcion de PC
+	sts PCMSK2, temp
+
+	ret
 
 branch_detec:
  	clr contador
 
-	ldi YL, low(passwordRAM)
-	ldi YH, high(passwordRAM)
+ 	ldi YL, low(passwordRAM)
+ 	ldi YH, high(passwordRAM)
 
 stand_by:
  	cpi mode, STNBY_STATE
@@ -39,83 +49,43 @@ stand_by:
 
 detectando:
 	inc contador
-
-	clr tecla
-
 	call buscar_tecla
-	call decod_tecla
+	call decod_tecla ;son ascii
 	call guardar_psw
-
-	cpi tecla, 0xFF
-	breq end_detectando
-
-	mov temp, contador
-	cpi temp, PSW_LIM
-	breq end_detectando
-
-	cpi mode, DET_STATE
-	brne end_detectando
-
-	ldi mode, STNBY_STATE
-	rjmp stand_by 							;se queda detectando hasta que algo lo haga cambiar de estado
-
-end_detectando:
 	call validar_psw
 
-	ldi mode, LOCK_STATE
-
+	cpi mode, LOCK_STATE
+	in temp, sreg
+	sbrc temp, sreg_z
 	ret
 
-buscar_tecla:
-	lds temp, PCICR
-	andi temp, ~(1<<PCIE1)
-	sts PCICR, temp								;deshabilito PC del puerto 1
+	ldi mode, STNBY_STATE
 
+	rjmp stand_by 							;se queda detectando hasta que algo lo haga cambiar de estado
+
+buscar_tecla:
 	ldi tecla, teclado_ini
+	sec
 
 busc_fila:
-	sec
-	rol tecla
-
-	in temp, PORTD ;(11110000)
-	ori temp, msk_entrada
-	and temp, tecla
-	out PORTD, temp
-
-	nop
-	nop
-
-	sbis PINC, PINC0
-	rjmp pars_busc
-	sbis PINC, PINC1
-	rjmp pars_busc
-	sbis PINC, PINC2
-	rjmp pars_busc
-	sbis PINC, PINC3
-	rjmp pars_busc
-
-	cpi tecla, teclado_fin
-	breq error_busc								;entrar acá es que no hay boton apretado, tecla quedaría en teclado_fin
-
-	rjmp busc_fila
-
-error_busc:
-	ser tecla
+	sbis PIND, PIND0
+	rjmp end_busc
+	sbis PIND, PIND1
+	rjmp end_busc
+	sbis PIND, PIND2
+	rjmp end_busc
+	sbis PIND, PIND3
 	rjmp end_busc
 
-pars_busc:
-	in temp, PINC 								;PIND debería tener un solo bit en 0 entre los bits 0 y 3
-	ori temp, msk_entrada
-	and tecla, temp								;solo quedan dos 0s
+	cpi tecla, teclado_fin
+	breq end_busc 								;entrar acá es que no hay boton apretado, tecla quedaría en teclado_fin
+
+	rol tecla
+	rjmp busc_fila
 
 end_busc:
-	in temp, PCIFR
-	ori temp, (1<<PCIF1)
-	out PCIFR, temp								;limpio el flag de interrupcion
-
-	lds temp, PCICR
-	ori temp, (1<<PCIE1)
-	sts PCICR, temp								;habilitar PC del puerto 1
+	in temp, PIND 								;PIND debería tener un solo bit en 0 entre los bits 0 y 3
+	and tecla, temp								;solo quedan dos 0s
 
 	ret
 
@@ -159,31 +129,8 @@ decod_tecla:
 	inc temp
 	cpi tecla, TECLA_9
 	breq end_decod
-
-	ldi temp, 'A'
-	cpi tecla, TECLA_A
-	breq end_decod
-
-	inc temp
-	cpi tecla, TECLA_B
-	breq end_decod
-
-	inc temp
-	cpi tecla, TECLA_C
-	breq end_decod
-
-	inc temp
-	cpi tecla, TECLA_D
-	breq end_decod
-
-	ldi temp, '*'
-	cpi tecla, TECLA_ast
-	breq end_decod
-
-	ldi temp, '#'
-	cpi tecla, TECLA_num
-	breq end_decod
 	
+	ldi mode, LOCK_STATE
 	ldi temp, 0xFF
 
 end_decod:
@@ -191,26 +138,23 @@ end_decod:
 	ret
 
 guardar_psw:
-	cpi mode, LOCK_STATE
-	breq end_guardando
+	mov temp, contador
+	cpi temp, PSW_LIM 						;si es el cuarto número ingresado, modifico modo a normal
+	brne end_guardando
 
-	cpi tecla, 0xFF
-	breq end_guardando
-
-	st Y+, tecla 											;guarda el ascii en la memoria sram
-
-	mov temp, tecla
-	call USART_Transmit										;saca el valor de la tecla (en ascii) por USART
+	ldi mode, LOCK_STATE
 
 end_guardando:
+	st Y+, tecla
+	mov temp, tecla
+	rcall USART_Transmit
+
 	ret
 
 validar_psw:
-	cpi mode, LOCK_STATE
-	breq incorrecto
-
-	cpi tecla, 0xFF
-	breq incorrecto
+	mov temp, contador
+	cpi temp, PSW_LIM
+	brne end_validar
 
 	clr eeprom_address_low
 	clr eeprom_address_high
@@ -223,10 +167,10 @@ validando:
 
 	ld temp, Y+
 	call EEPROM_READ
-	mov valor, eeprom_dato
+	mov value_received, eeprom_dato
 	inc eeprom_address_low
 
-	cp temp, valor
+	cp temp, value_received
 	brne incorrecto
 
 	mov temp, contador
@@ -234,45 +178,19 @@ validando:
 	brne validando
 
 correcto:
-	call OPEN_LOCK
+	rcall OPEN_LOCK
+	in temp, PORTB
+	ori temp, (1<<PORTB4)
+	out PORTB, temp
 
-	sbi PORTB, PB4
-	ldi mode, LEDS_ON_WAITING
-	call OPEN_LOCK
-	call TIMER2_START
-	call loop_leds_on
-	call CLOSE_LOCK
-	cbi PORTB, PB4
 	rjmp end_validar
 
 incorrecto:
-	sbi PORTB, PB5
-	ldi mode, LEDS_ON_WAITING
-	call TIMER2_START
-	call loop_leds_on
-	cbi PORTB, PB5
+	in temp, PORTB
+	ori temp, (1<<PORTB5)
+	out PORTB, temp
 
 end_validar:
-	ret
-
-inicio_conteo: 										;temp, contador
-	clr temp
-	out TCNT0, temp									;reinicio el contador
-
-	in temp, TCCR0A
-	andi temp, ~(0b11<<WGM00)						;modo normal
-	out TCCR0A, temp
-
-	in temp, TCCR0B
-	andi temp, ~msk_prescaler
-	ori temp, clk_antireb
-	andi temp, ~(1<<WGM02)							;modo normal
-	out TCCR0B, temp								;inicia el conteo, clk/1024
-
-	lds temp, PCMSK1
-	andi temp, msk_entrada							;deshabilito los puertos de entrada para interrupcion de PC
-	sts PCMSK1, temp
-
 	ret
 
 INT_teclado:
@@ -282,13 +200,8 @@ INT_teclado:
 
 	call inicio_conteo
 
-	in temp, PORTD
-	andi temp, ~msk_entrada
-	out PORTD, temp
-
-	in valor, PINC
-	ldi temp, ~msk_entrada							;guardo el valor de las entradas en entrada_capturada
-	and valor, temp
+	in value_received, PIND
+	andi value_received, ~msk_entrada		;guardo el valor de las entradas en entrada_capturada
 
 	pop temp
 	out sreg, temp
@@ -301,32 +214,23 @@ INT_timer0:
 	in temp, sreg
 	push temp
 
-	in temp, PCIFR
-	ori temp, (1<<PCIF1)
-	out PCIFR, temp								;limpio el flag de interrupcion
-
-	lds temp, PCMSK1
-	ori temp, ~msk_entrada						;vuelvo a habilitar los puertos de entrada para interrupcion de PC
-	sts PCMSK1, temp
+	lds temp, PCMSK2
+	ori temp, msk_entrada					;vuelvo a habilitar los puertos de entrada para interrupcion de PC
+	sts PCMSK2, temp
 
 	in temp, TCCR0B
 	andi temp, ~msk_prescaler
 	out TCCR0B, temp							;detengo el contador
-	
-	in temp, PORTD
-	andi temp, ~msk_entrada
-	out PORTD, temp
 
-	in temp, PINC
+	in temp, PIND
 	andi temp, ~msk_entrada
 
-	cpi temp, 0x0F
+	cpi temp, 0x00
 	breq end_timer0
+	cp temp, value_received
+	brne end_timer0							;si el cambio que detectó sigue estando
 
-	cp temp, valor
-	brne end_timer0								;si el cambio que detectó sigue estando
-
-	ldi mode, DET_STATE							;el cambio a realizar, para que el main detecte y haga
+	ldi mode, DET_STATE						;el cambio a realizar, para que el main detecte y haga
 
 end_timer0:
 	pop temp
@@ -334,8 +238,3 @@ end_timer0:
 	pop temp
 
 	reti
-
-loop_leds_on:
-	cpi mode, LEDS_ON_DONE
-	brne loop_leds_on
-	ret

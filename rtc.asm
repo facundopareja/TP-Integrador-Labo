@@ -41,7 +41,6 @@ TIME_COD:
     andi    temp, 0x0F          ; Mask to extract low nibble (units place)
     ori     temp, '0'           ; Convert to ASCII ('0' + units digit)
     st      X+, temp            ; Store ASCII units digit at X and increment pointer
-#if 0
 
     ; Convert minutes to ASCII
     mov     temp, minutes       ; Load minutes (BCD format) into temp
@@ -54,7 +53,6 @@ TIME_COD:
     andi    temp, 0x0F          ; Mask to extract low nibble (units place)
     ori     temp, '0'           ; Convert to ASCII ('0' + units digit)
     st      X+, temp            ; Store ASCII units digit at X and increment pointer
-#endif
 
     ret
 

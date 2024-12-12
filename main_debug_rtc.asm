@@ -96,6 +96,7 @@ TRANSMIT_prueba:
 	rcall delay_500ms
 STORING_CURRENT_TIME:
 	ldi hours, 0x18
+	ldi minutes, 0x20
 	rcall TWI_WRITE
 	clr hours
 ; Envio los segundos cada 500ms para debuggear
@@ -107,7 +108,7 @@ LOADING_CURRENT_TIME:
 	rcall TIME_COD
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
-	ldi numbers_received, (LENGTH_CODE >> 1)	; son solo 2 bytes (dos caracteres de segundos: unidades y decenas)
+	ldi numbers_received, (LENGTH_CODE)	; son solo 2 bytes (dos caracteres de segundos: unidades y decenas)
 
 TRANSMIT_TIME:
 	lds temp, UCSR0A
@@ -116,18 +117,30 @@ TRANSMIT_TIME:
 	ld temp, X+
 	rcall USART_Transmit
 	dec numbers_received
-	cpi numbers_received, 0
+	cpi numbers_received,2
+	in temp, SREG
+	sbrc temp, SREG_Z
+	rcall PRINT_SEPARATOR
+	cpi numbers_received,0
 	brne TRANSMIT_TIME
+
 TRANSMIT_PRUEBA2:
 	lds temp, UCSR0A
 	sbrs temp, UDRE0
 	rjmp TRANSMIT_PRUEBA2
-	ldi temp, ':'
+	ldi temp, ' '
 	rcall USART_Transmit
 
 	rcall delay_500ms
 	rjmp main_loop
 
+PRINT_SEPARATOR:
+	lds temp, UCSR0A
+	sbrs temp, UDRE0
+	rjmp PRINT_SEPARATOR
+	ldi temp, ':'
+	rcall USART_Transmit
+	ret
 
 ; --- Subrutina de retardo de 500ms ---
 delay_500ms:
@@ -289,6 +302,10 @@ branch_detec_call:
 
 .include "usart.asm"
 .include "eeprom.asm"
-.include "sec_test.asm"
+;.include "keyboard_m.asm"
+.include "twi.asm"
 .include "rtc.asm"
+;.include "servo.asm"
+.include "timer2.asm"
+
 
