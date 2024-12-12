@@ -5,9 +5,7 @@
  *  Created: 11/22/2024 11:26:57 AM
  *   Author: valen
  */ 
- ; For a 50 kHz SCL frequency (standard mode): TWBR = (f_CPU/f_SCL - 16)/2*Prescaler = (1MHz/50kHz - 16)/2*1 = 2.
-; For a 100 kHz SCL frequency (standard mode): TWBR = (f_CPU/f_SCL - 16)/2*Prescaler = (16MHz/100kHz - 16)/2*1 = 72.
-.equ	TWBR_value = 36 ; 2 - 1 mhz; From datashet DS3231 slave address is 0b1101000 = 0x68
+;From datashet DS3231 slave address is 0b1101000 = 0x68
 ; And 0x01 is minutes reg, 0x02 is hours reg
 .equ	DS3231_addr = 0b1101000
 .equ	sec_reg = 0x00

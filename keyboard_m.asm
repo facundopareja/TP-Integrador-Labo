@@ -237,7 +237,7 @@ correcto:
 	sbi PORTB, PB4
 	ldi mode, LEDS_ON_WAITING
 	call OPEN_LOCK
-	call SEND_CURRENT_TIME
+	call LOADING_CURRENT_TIME
 	call TIMER2_START
 	call loop_leds_on
 	call CLOSE_LOCK

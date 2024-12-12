@@ -29,11 +29,13 @@
 ; Constants
 .equ LENGTH_CODE = 4
 .equ PSW_lim = 4
+.EQU retardo = 40
 ; Register labels
 .DEF temp= r16
 .DEF mode= r17
 .DEF value_received = r18
 .DEF numbers_received = r19
+.DEF numbers_transmitted = r4
 .DEF minutes = r21
 .DEF hours = r22
 ; RAM
@@ -49,17 +51,19 @@ passwordRAM: .byte LENGTH_CODE
 .ORG URXCaddr
 	rjmp USART_Receive
 
-.org PCI1addr
-	rjmp INT_teclado
+.ORG UTXCaddr
+	reti ; La funcion esta incompleta
+
+.org PCI2addr
+	reti
 
 .org OC2Aaddr
-	rjmp TIMER2_COMP
+	reti
 
-.org OVF0addr
-	rjmp INT_timer0
+.org OC0Aaddr
+	reti
 
-.org OVF2addr
-	rjmp TIMER2_COMP
+.org TWIaddr
 
 .ORG INT_VECTORS_SIZE
 RESET:
@@ -69,59 +73,53 @@ RESET:
 	LDI temp, LOW(RAMEND)
 	OUT SPL, temp
 
-MODULE_INITIALIZING:
-	rcall USART_Init
-	rcall TWI_Init
-	rcall TIMER1_Init
-	rcall TIMER2_Init
-
 PORT_INITIALIZING:
 	in temp, ddrb
 	ori temp, 0b00110010 ; Mascara para activar PB4/PB5/PB1 como salida
 	out ddrb, temp
-
 	ldi temp, msk_entrada
-	out DDRD, temp				;ultimos 4 bit de D como salida
+	out DDRD, temp
 
-	clr temp
-	out DDRC, temp 				;primeros 4 bit de C como entrada
-
-	clr temp				;salidas en 0
+	ldi temp, ~msk_entrada						;pullup y salidas en 0
 	out PORTD, temp
 
-	ldi temp, ~msk_entrada 			;pullup en bits de entrada
-	out PORTC, temp
-
 INICIALIZACION_PC:
-	lds temp, PCMSK1
+	lds temp, PCMSK2
 	ori temp, ~msk_entrada
-	sts PCMSK1, temp 			;habilito los puertos de la entrada para interrupcion PC
+	sts PCMSK2, temp 			;habilito los puertos de la entrada para interrupcion PC
 
 	in temp, PCIFR
-	ori temp, (1<<PCIF1)
+	ori temp, (1<<PCIF0)
 	out PCIFR, temp				;limpio el flag de interrupcion
 
 	lds temp, PCICR
-	ori temp, (1<<PCIE1)
+	ori temp, (1<<PCIE2)
 	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
 
 INICIALIZACION_TIMER0:
-	in temp, TCCR0B
-	andi temp, ~(0b111<<CS00) 					;clock detenido
+	ldi temp, ~(11<<WGM00)			;modo normal
+	out TCCR0A, temp
+
+	ldi temp, (0<<WGM02) | (0b000<<CS00) 	;clock detenido
 	out TCCR0B, temp
 
 	in temp, TIFR0
 	ori temp, (1<<TOV0)
-	out TIFR0, temp								;limpio el flag de interrupcion
+	out TIFR0, temp				;limpio el flag de interrupcion
 
 	lds temp, TIMSK0
 	ori temp, (1<<TOIE0)
-	sts TIMSK0, temp							;habilito la interrupcion por Overflow
+	sts TIMSK0, temp				;habilito la interrupcion por Overflow
 
+MODULE_INITIALIZING:
+	rcall USART_Init
+	rcall TWI_Init
+	rcall TIMER1_Init
 	sei
 
 LOADING_CURRENT_PASSWORD:
-	ldi numbers_received, LENGTH_CODE
+	ldi temp, LENGTH_CODE
+	mov numbers_transmitted, temp
 	clr eeprom_address_high
 	clr eeprom_address_low
 TRANSMIT_LOOP:
@@ -132,16 +130,20 @@ TRANSMIT_LOOP:
 	mov temp, eeprom_dato
 	rcall USART_Transmit
 	inc eeprom_address_low
-	dec numbers_received
-	cpi numbers_received, 0
+	dec numbers_transmitted
+	mov temp, numbers_transmitted
+	cpi temp, 0
 	brne TRANSMIT_LOOP
+	rcall TRANSMIT_SPACE
 
-main_loop:
+rcall LOADING_CURRENT_TIME
+
+start:
 	cpi mode, CONFIG_STATE
 	breq CONFIG_MODE
 	cpi mode, DET_STATE
 	breq branch_detec_call
-	rjmp main_loop
+	rjmp start
 
 CONFIG_MODE:
 	clr numbers_received
@@ -152,26 +154,43 @@ CONFIG_MODE:
 WAIT_CHAR:
 	cpi mode, LOCK_STATE
 	breq END_CONFIG_MODE
-	cpi mode, CONFIG_NEW_PWD_STATE
-	breq WAIT_NEW_PWD
 	cpi mode, CONFIG_RTC_STATE
 	breq WAIT_TIME
+	cpi mode, CONFIG_NEW_PWD_STATE
+	breq WAIT_NEW_PWD
 	rjmp WAIT_CHAR
 WAIT_TIME:
+	rcall LOADING_STR_TIME_wait
+	rcall TRANSMIT_STR
+WAIT_TIME_LOOP:
 	cpi mode, RECEIVED_CODE_STATE
 	breq STORE_TIME
-	rjmp WAIT_TIME
+	cpi mode, LOCK_STATE
+	breq END_CONFIG_MODE
+	rjmp WAIT_TIME_LOOP
 WAIT_NEW_PWD:
+	rcall LOADING_STR_PWD_wait
+	rcall TRANSMIT_STR
+WAIT_NEW_PWD_LOOP:
 	cpi mode, RECEIVED_CODE_STATE
 	breq STORE_CODE
-	rjmp WAIT_NEW_PWD
+	cpi mode, LOCK_STATE
+	breq END_CONFIG_MODE
+	rjmp WAIT_NEW_PWD_LOOP
 STORE_TIME:
+	rcall LOADING_STR_TIME
+	rcall TRANSMIT_STR
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
 	rcall TIME_DECOD
 	rcall TWI_WRITE
-	rjmp END_CONFIG_MODE
+	clr numbers_received
+	ldi mode, CONFIG_STATE
+	rjmp WAIT_CHAR
+	;rjmp END_CONFIG_MODE
 STORE_CODE:
+	rcall LOADING_STR_PWD
+	rcall TRANSMIT_STR
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
 	clr eeprom_address_high
@@ -184,6 +203,9 @@ LOOP_STORE:
 	dec numbers_received
 	cpi numbers_received, 0 
 	brne LOOP_STORE
+	clr numbers_received
+	ldi mode, CONFIG_STATE
+	rjmp WAIT_CHAR
 END_CONFIG_MODE:
 	; Apago leds
 	cbi PORTB, PB4
@@ -194,6 +216,7 @@ branch_detec_call:
 	call branch_detec
 	rjmp start
 
+
 .include "usart.asm"
 .include "eeprom.asm"
 .include "keyboard_m.asm"
@@ -201,4 +224,11 @@ branch_detec_call:
 .include "rtc.asm"
 .include "servo.asm"
 .include "timer2.asm"
+
+STR_PWD: .db "Cargando contrasena... ",0
+STR_PWD_wait: .db "Esperando contrasena... ",0,0
+STR_TIME: .db "Cargando tiempo... ",0
+STR_TIME_wait: .db "Esperando tiempo... ",0,0
+STR_INVALID: .db "Has ingresado un valor invalido. Ingresa un numero valido. ",0
+
 

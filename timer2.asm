@@ -1,5 +1,5 @@
 /*
- * timer2_alt.asm
+ * timer2.asm
  *
  *  Created: 9/12/2024 10:59:25
  *   Author: Facundo

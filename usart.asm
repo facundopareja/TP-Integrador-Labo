@@ -5,8 +5,6 @@
  *   Author: Facundo
  */ 
 
- ; Baud rate set to 9600 
-.equ valor_UBRRn=103
 ; USART set in asynchronous mode.
 .equ USART_mode = (0<<UMSEL01) | (0<<UMSEL00)
  ; Enabled transmitter, receptor and both interrupts (actually only the reception one).
