@@ -6,7 +6,6 @@
  */ 
 
  ; Servo
-
 .equ	OCR1A_min = 499			; OCR1A_min = 1MHz*0.5ms/1 - 1 VALOR_PARA_1MHZ = 499
 .equ	OCR1A_central = 1499			; OCR1A_central = 1MHz*1.5ms/1 - 1 - VALOR PARA 1 MHZ = 1499
 .equ	OCR1A_max = 2499				; OCR1A_max = 1MHz*2.5ms/1 - 1 - VALOR PARA 1 MHZ = 2499

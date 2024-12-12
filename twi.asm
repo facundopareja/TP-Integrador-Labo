@@ -171,3 +171,42 @@ SEND_NACK:
 	ldi temp, (1 << TWEN) | (0 << TWEA) | (1 << TWINT)
 	sts TWCR, temp
 	ret
+
+SEND_CURRENT_TIME:
+	rcall TWI_READ
+	ldi XH, high(KEYCODE)
+	ldi XL, low(KEYCODE)
+	rcall TIME_COD
+	ldi XH, high(KEYCODE)
+	ldi XL, low(KEYCODE)
+	ldi numbers_received, (LENGTH_CODE)	; son solo 2 bytes (dos caracteres de segundos: unidades y decenas)
+
+TRANSMIT_TIME:
+	lds temp, UCSR0A
+	sbrs temp, UDRE0
+	rjmp TRANSMIT_TIME
+	ld temp, X+
+	rcall USART_Transmit
+	dec numbers_received
+	cpi numbers_received,2
+	in temp, SREG
+	sbrc temp, SREG_Z
+	rcall PRINT_SEPARATOR
+	cpi numbers_received,0
+	brne TRANSMIT_TIME
+
+TRANSMIT_PRUEBA2:
+	lds temp, UCSR0A
+	sbrs temp, UDRE0
+	rjmp TRANSMIT_PRUEBA2
+	ldi temp, ' '
+	rcall USART_Transmit
+	ret
+
+PRINT_SEPARATOR:
+	lds temp, UCSR0A
+	sbrs temp, UDRE0
+	rjmp PRINT_SEPARATOR
+	ldi temp, ':'
+	rcall USART_Transmit
+	ret

@@ -4,6 +4,7 @@
 ; Created: 15/11/2024 08:18:40
 ; Author : Facundo
 ;
+.include "constants_16mhz.asm"
 
 .equ 	msk_entrada = 	0b11110000
 
@@ -23,11 +24,11 @@
 .equ CONFIG_NEW_PWD_STATE = 6
 .equ STNBY_STATE = 7
 .equ DET_STATE = 8
+.equ LEDS_ON_WAITING = 9
+.equ LEDS_ON_DONE = 10
 ; Constants
 .equ LENGTH_CODE = 4
 .equ PSW_lim = 4
-.EQU	retardo = 40
-
 ; Register labels
 .DEF temp= r16
 .DEF mode= r17
@@ -51,16 +52,17 @@ passwordRAM: .byte LENGTH_CODE
 .ORG UTXCaddr
 	reti ; La funcion esta incompleta
 
-.org PCI2addr
-	reti
+.org PCI1addr
+	rjmp INT_teclado
 
 .org OC2Aaddr
-	reti
+	rjmp TIMER2_COMP
 
-.org OC0Aaddr
-	reti
+.org OVF0addr
+	rjmp INT_timer0
 
-.org TWIaddr
+.org OVF2addr
+	rjmp TIMER2_COMP
 
 .ORG INT_VECTORS_SIZE
 RESET:
@@ -70,139 +72,55 @@ RESET:
 	LDI temp, LOW(RAMEND)
 	OUT SPL, temp
 
-
-PORT_INITIALIZING:
-	in temp, ddrb
-	ori temp, 0b00110010 ; Mascara para activar PB4/PB5/PB1 como salida
-	out ddrb, temp
-	ldi temp, msk_entrada
-	out DDRD, temp
-
-	ldi temp, ~msk_entrada						;pullup y salidas en 0
-	out PORTD, temp
-
-
-MODULE_INITIALIZING:
-	rcall USART_Init
-	rcall TWI_Init
-	sei
-
-TRANSMIT_prueba:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_prueba
-	ldi temp, 'I'
-	rcall USART_Transmit
-	rcall delay_500ms
-STORING_CURRENT_TIME:
-	ldi hours, 0x18
-	ldi minutes, 0x20
-	rcall TWI_WRITE
-	clr hours
-; Envio los segundos cada 500ms para debuggear
-SEND_CURRENT_TIME:
-	rcall TWI_READ
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	rcall TIME_COD
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	ldi numbers_received, (LENGTH_CODE)	; son solo 2 bytes (dos caracteres de segundos: unidades y decenas)
-
-TRANSMIT_TIME:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_TIME
-	ld temp, X+
-	rcall USART_Transmit
-	dec numbers_received
-	cpi numbers_received,2
-	in temp, SREG
-	sbrc temp, SREG_Z
-	rcall PRINT_SEPARATOR
-	cpi numbers_received,0
-	brne TRANSMIT_TIME
-
-TRANSMIT_PRUEBA2:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_PRUEBA2
-	ldi temp, ' '
-	rcall USART_Transmit
-	ret
-
-PRINT_SEPARATOR:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp PRINT_SEPARATOR
-	ldi temp, ':'
-	rcall USART_Transmit
-	ret
-
-; --- Subrutina de retardo de 500ms ---
-delay_500ms:
-    ldi r18, retardo
-    ldi r19, retardo
-    ldi r20, retardo
-
-delay_loop:
-    dec r20
-    brne delay_loop
-
-    dec r19
-    brne delay_loop
-
-    dec r18
-    brne delay_loop
-
-    ret
-
-
-#if 0
-
-
-PORT_INITIALIZING:
-	in temp, ddrb
-	ori temp, 0b00110010 ; Mascara para activar PB4/PB5/PB1 como salida
-	out ddrb, temp
-	ldi temp, msk_entrada
-	out DDRD, temp
-
-	ldi temp, ~msk_entrada						;pullup y salidas en 0
-	out PORTD, temp
-
-INICIALIZACION_PC:
-	lds temp, PCMSK2
-	ori temp, ~msk_entrada
-	sts PCMSK2, temp 			;habilito los puertos de la entrada para interrupcion PC
-
-	in temp, PCIFR
-	ori temp, (1<<PCIF0)
-	out PCIFR, temp				;limpio el flag de interrupcion
-
-	lds temp, PCICR
-	ori temp, (1<<PCIE2)
-	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
-
-INICIALIZACION_TIMER0:
-	ldi temp, ~(11<<WGM00)			;modo normal
-	out TCCR0A, temp
-
-	ldi temp, (0<<WGM02) | (0b000<<CS00) 	;clock detenido
-	out TCCR0B, temp
-
-	in temp, TIFR0
-	ori temp, (1<<TOV0)
-	out TIFR0, temp				;limpio el flag de interrupcion
-
-	lds temp, TIMSK0
-	ori temp, (1<<TOIE0)
-	sts TIMSK0, temp				;habilito la interrupcion por Overflow
-
 MODULE_INITIALIZING:
 	rcall USART_Init
 	rcall TWI_Init
 	rcall TIMER1_Init
+	rcall TIMER2_Init
+
+PORT_INITIALIZING:
+	in temp, ddrb
+	ori temp, 0b00110010 ; Mascara para activar PB4/PB5/PB1 como salida
+	out ddrb, temp
+
+	ldi temp, msk_entrada
+	out DDRD, temp				;ultimos 4 bit de D como salida
+
+	clr temp
+	out DDRC, temp 				;primeros 4 bit de C como entrada
+
+	clr temp				;salidas en 0
+	out PORTD, temp
+
+	ldi temp, ~msk_entrada 			;pullup en bits de entrada
+	out PORTC, temp
+
+INICIALIZACION_PC:
+	lds temp, PCMSK1
+	ori temp, ~msk_entrada
+	sts PCMSK1, temp 			;habilito los puertos de la entrada para interrupcion PC
+
+	in temp, PCIFR
+	ori temp, (1<<PCIF1)
+	out PCIFR, temp				;limpio el flag de interrupcion
+
+	lds temp, PCICR
+	ori temp, (1<<PCIE1)
+	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
+
+INICIALIZACION_TIMER0:
+	in temp, TCCR0B
+	andi temp, ~(0b111<<CS00) 					;clock detenido
+	out TCCR0B, temp
+
+	in temp, TIFR0
+	ori temp, (1<<TOV0)
+	out TIFR0, temp								;limpio el flag de interrupcion
+
+	lds temp, TIMSK0
+	ori temp, (1<<TOIE0)
+	sts TIMSK0, temp							;habilito la interrupcion por Overflow
+
 	sei
 
 LOADING_CURRENT_PASSWORD:
@@ -220,30 +138,13 @@ TRANSMIT_LOOP:
 	dec numbers_received
 	cpi numbers_received, 0
 	brne TRANSMIT_LOOP
-LOADING_CURRENT_TIME:
-	call TWI_READ
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	call TIME_COD
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	ldi numbers_received, LENGTH_CODE
-TRANSMIT_TIME:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_TIME
-	ld temp, X+
-	rcall USART_Transmit
-	dec numbers_received
-	cpi numbers_received, 0
-	brne TRANSMIT_TIME
 
-start:
+main_loop:
 	cpi mode, CONFIG_STATE
 	breq CONFIG_MODE
 	cpi mode, DET_STATE
 	breq branch_detec_call
-	rjmp start
+	rjmp main_loop
 
 CONFIG_MODE:
 	clr numbers_received
@@ -295,14 +196,12 @@ END_CONFIG_MODE:
 branch_detec_call:
 	call branch_detec
 	rjmp start
-#endif
 
 .include "usart.asm"
 .include "eeprom.asm"
-;.include "keyboard_m.asm"
+.include "keyboard_m.asm"
 .include "twi.asm"
 .include "rtc.asm"
-;.include "servo.asm"
+.include "servo.asm"
 .include "timer2.asm"
-
 
