@@ -30,6 +30,9 @@ USART_Transmit:
 	ret
 	
 USART_Receive:
+	push temp
+	in temp, SREG
+	push temp
 	; After receiving a character through SERIAL port, we check, in order
 	; 1) If the character is 'F' (if it is we return to LOCK_STATE and end the interruption).
 	; 2) If we are already in CONFIG_STATE and 'P' has been previously pressed 
@@ -86,37 +89,37 @@ VERIFY_TIME:
 	breq THRD_TIME_DIGIT
 FRTH_TIME_DIGIT:
 	cpi value_received, '0'
-	brlo FIN
+	brlo FIN_INVALID
 	cpi value_received, '9'+ 1 		; if HH:MM second H > 9 --> end
-	brsh FIN
+	brsh FIN_INVALID
 	rjmp LOAD_X_POINTER
 FRST_TIME_DIGIT:
 	cpi value_received, '0'
-	brlo FIN
+	brlo FIN_INVALID
 	cpi value_received, '2' + 1		; if HH:MM first H > 2 --> end
-	brsh FIN
+	brsh FIN_INVALID
 	rjmp LOAD_X_POINTER
 SCND_TIME_DIGIT:
 	cpi value_received, '0'
-	brlo FIN
+	brlo FIN_INVALID
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
 	ld temp, X
 	cpi temp, '2'
 	breq SCND_DIGIT_LOWER_2
 	cpi value_received, '9' + 1		; if HH:MM second H > 9 --> end
-	brsh FIN
+	brsh FIN_INVALID
 	rjmp LOAD_X_POINTER
 THRD_TIME_DIGIT:
 	cpi value_received, '0'
-	brlo FIN
+	brlo FIN_INVALID
 	cpi value_received, '5' + 1		; if HH:MM first M > 5 --> end
-	brsh FIN
+	brsh FIN_INVALID
 	rjmp LOAD_X_POINTER
 
 SCND_DIGIT_LOWER_2:
 	cpi value_received, '3' + 1		; if HH:MM second H > 3 && first digit H = 2 --> end
-	brsh FIN
+	brsh FIN_INVALID
 	rjmp LOAD_X_POINTER
 
 ; We check that received value is an ASCII number.
@@ -125,9 +128,9 @@ SCND_DIGIT_LOWER_2:
 ; We then enter RECEIVED_CODE_STATE
 VERIFY_NUMBER:
 	cpi value_received, '0'
-	brlo FIN
-	cpi value_received, '9'+1
-	brsh FIN
+	brlo FIN_INVALID
+	cpi value_received, '9' + 1
+	brsh FIN_INVALID
 LOAD_X_POINTER:
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
@@ -142,4 +145,14 @@ STORE_NUMBERS:
 	ldi mode, RECEIVED_CODE_STATE
 
 FIN:
+	pop temp
+	out SREG, temp
+	pop temp
+	reti
+FIN_INVALID:
+	rcall LOADING_STR_INVALID
+	rcall TRANSMIT_STR
+	pop temp
+	out SREG, temp
+	pop temp
 	reti

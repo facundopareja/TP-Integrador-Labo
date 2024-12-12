@@ -13,8 +13,8 @@
 .equ	sec_reg = 0x00
 .equ	min_reg = 0x01
 .equ	hr_reg = 0x02
-.equ	START = 0x08
-.equ	REPEATED_START = 0x10
+.equ	START_ACK = 0x08
+.equ	REPEATED_START_ACK = 0x10
 .equ	MT_SLA_ACK = 0x18
 .equ	MT_DATA_ACK = 0x28
 .equ	MT_DATA_NACK = 0x38
@@ -152,12 +152,12 @@ TWSR_Status_Check:
 	ret
 TWSR_START_Check:
 	rcall TWSR_Check
-	cpi temp, START
+	cpi temp, START_ACK
 	brne TWI_ERROR			; If status different from START (0x08) go to ERROR.
 	ret
 TWSR_Repeated_START_Check:
 	rcall TWSR_Check
-	cpi temp, REPEATED_START
+	cpi temp, REPEATED_START_ACK
 	brne TWI_ERROR			; If status different from START (0x08) go to ERROR.
 	ret
 
@@ -170,43 +170,4 @@ SEND_ACK:
 SEND_NACK:
 	ldi temp, (1 << TWEN) | (0 << TWEA) | (1 << TWINT)
 	sts TWCR, temp
-	ret
-
-SEND_CURRENT_TIME:
-	rcall TWI_READ
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	rcall TIME_COD
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	ldi numbers_received, (LENGTH_CODE)	; son solo 2 bytes (dos caracteres de segundos: unidades y decenas)
-
-TRANSMIT_TIME:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_TIME
-	ld temp, X+
-	rcall USART_Transmit
-	dec numbers_received
-	cpi numbers_received,2
-	in temp, SREG
-	sbrc temp, SREG_Z
-	rcall PRINT_SEPARATOR
-	cpi numbers_received,0
-	brne TRANSMIT_TIME
-
-TRANSMIT_PRUEBA2:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_PRUEBA2
-	ldi temp, ' '
-	rcall USART_Transmit
-	ret
-
-PRINT_SEPARATOR:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp PRINT_SEPARATOR
-	ldi temp, ':'
-	rcall USART_Transmit
 	ret

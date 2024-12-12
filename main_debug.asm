@@ -20,7 +20,7 @@
 .equ RECEIVED_CODE_STATE = 3
 ; Once in config state, determine if a new pwd will be loaded (P) or the time will be set (T)
 .equ CONFIG_RTC_STATE = 5
-.equ CONFIG_NEW_PWD_STATE = 6
+.equ CONFIG_NEW_PWD_STATE = 60
 .equ STNBY_STATE = 7
 .equ DET_STATE = 8
 ; Constants
@@ -109,7 +109,7 @@ LOADING_CURRENT_TIME:
 	rcall TIME_COD
 	ldi XH, high(KEYCODE)
 	ldi XL, low(KEYCODE)
-	ldi numbers_received, (LENGTH_CODE)	; son solo 2 bytes (dos caracteres de segundos: unidades y decenas)
+	ldi numbers_transmitted, (LENGTH_CODE)	; son solo 2 bytes (dos caracteres de segundos: unidades y decenas)
 
 TRANSMIT_TIME:
 	lds temp, UCSR0A
@@ -117,12 +117,14 @@ TRANSMIT_TIME:
 	rjmp TRANSMIT_TIME
 	ld temp, X+
 	rcall USART_Transmit
-	dec numbers_received
-	cpi numbers_received,2
+	dec numbers_transmitted
+	mov temp, numbers_transmitted
+	cpi temp, 2
 	in temp, SREG
 	sbrc temp, SREG_Z
 	rcall PRINT_SEPARATOR
-	cpi numbers_received,0
+	mov temp, numbers_transmitted
+	cpi temp, 0
 	brne TRANSMIT_TIME
 
 TRANSMIT_PRUEBA2:
@@ -255,17 +257,23 @@ WAIT_CHAR:
 	breq WAIT_NEW_PWD
 	rjmp WAIT_CHAR
 WAIT_TIME:
+	rcall LOADING_STR_TIME_wait
+	rcall TRANSMIT_STR
+WAIT_TIME_LOOP:
 	cpi mode, RECEIVED_CODE_STATE
 	breq STORE_TIME
 	cpi mode, LOCK_STATE
 	breq END_CONFIG_MODE
-	rjmp WAIT_TIME
+	rjmp WAIT_TIME_LOOP
 WAIT_NEW_PWD:
+	rcall LOADING_STR_PWD_wait
+	rcall TRANSMIT_STR
+WAIT_NEW_PWD_LOOP:
 	cpi mode, RECEIVED_CODE_STATE
 	breq STORE_CODE
 	cpi mode, LOCK_STATE
 	breq END_CONFIG_MODE
-	rjmp WAIT_NEW_PWD
+	rjmp WAIT_NEW_PWD_LOOP
 STORE_TIME:
 	rcall LOADING_STR_TIME
 	rcall TRANSMIT_STR
@@ -306,82 +314,6 @@ branch_detec_call:
 	rjmp start
 
 
-; ----------------------------------- TRANSMIT ROUTINES --------------------------------------
-LOADING_CURRENT_TIME:
-	rcall TWI_READ
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	rcall TIME_COD
-	ldi XH, high(KEYCODE)
-	ldi XL, low(KEYCODE)
-	ldi temp, LENGTH_CODE
-	mov numbers_transmitted, temp
-TRANSMIT_TIME:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_TIME
-	ld temp, X+
-	rcall USART_Transmit
-	dec numbers_transmitted
-	mov temp, numbers_transmitted
-	cpi temp,2
-	in temp, SREG
-	sbrc temp, SREG_Z
-	rcall PRINT_SEPARATOR
-	mov temp, numbers_transmitted
-	cpi temp, 0
-	brne TRANSMIT_TIME
-	ret
-
-LOADING_STR_PWD:
-	ldi ZH, high(STR_PWD << 1)
-	ldi ZL, low(STR_PWD << 1)
-	ret
-LOADING_STR_TIME:
-	ldi ZH, high(STR_TIME << 1)
-	ldi ZL, low(STR_TIME << 1)
-	ret
-LOADING_STR_INVALID:
-	ldi ZH, high(STR_INVALID << 1)
-	ldi ZL, low(STR_INVALID << 1)
-	ret
-TRANSMIT_STR:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_STR
-	lpm temp, Z+
-	cpi temp, 0
-	breq END_STR
-	rcall USART_Transmit
-	rjmp TRANSMIT_STR
-
-END_STR:	ret
-
-
-PRINT_SEPARATOR:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp PRINT_SEPARATOR
-	ldi temp, ':'
-	rcall USART_Transmit
-	ret
-
-TRANSMIT_S:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_S
-	ldi temp, 'S'
-	rcall USART_Transmit
-	ret
-
-TRANSMIT_SPACE:
-	lds temp, UCSR0A
-	sbrs temp, UDRE0
-	rjmp TRANSMIT_SPACE
-	ldi temp, ' '
-	rcall USART_Transmit
-	ret
-
 .include "usart.asm"
 .include "eeprom.asm"
 .include "keyboard_m.asm"
@@ -390,8 +322,10 @@ TRANSMIT_SPACE:
 .include "servo.asm"
 .include "timer2.asm"
 
-STR_PWD: .db "Cargando contrasena...",0,0
-STR_TIME: .db "Cargando tiempo...",0,0
-STR_INVALID: .db "Has ingresado valores invalidos.",0,0
+STR_PWD: .db "Cargando contrasena... ",0
+STR_PWD_wait: .db "Esperando contrasena... ",0,0
+STR_TIME: .db "Cargando tiempo... ",0
+STR_TIME_wait: .db "Esperando tiempo... ",0,0
+STR_INVALID: .db "Has ingresado un valor invalido. Ingresa un numero valido. ",0
 
 
