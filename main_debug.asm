@@ -275,8 +275,8 @@ STORE_TIME:
 	rcall TWI_WRITE
 	clr numbers_received
 	ldi mode, CONFIG_STATE
-	;rjmp WAIT_CHAR
-	rjmp END_CONFIG_MODE
+	rjmp WAIT_CHAR
+	;rjmp END_CONFIG_MODE
 STORE_CODE:
 	rcall LOADING_STR_PWD
 	rcall TRANSMIT_STR
