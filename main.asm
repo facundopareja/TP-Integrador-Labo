@@ -74,29 +74,29 @@ PORT_INITIALIZING:
 	out ddrb, temp
 
 	ldi temp, msk_entrada
-	out DDRD, temp				;ultimos 4 bit de D como salida
+	out DDRD, temp								;ultimos 4 bit de D como salida
 
 	clr temp
-	out DDRC, temp 				;primeros 4 bit de C como entrada
+	out DDRC, temp 								;primeros 4 bit de C como entrada
 
-	clr temp				;salidas en 0
+	clr temp									;salidas en 0
 	out PORTD, temp
 
-	ldi temp, ~msk_entrada 			;pullup en bits de entrada
+	ldi temp, ~msk_entrada 						;pullup en bits de entrada
 	out PORTC, temp
 
 INICIALIZACION_PC:
 	lds temp, PCMSK1
 	ori temp, ~msk_entrada
-	sts PCMSK1, temp 			;habilito los puertos de la entrada para interrupcion PC
+	sts PCMSK1, temp 							;habilito los puertos de la entrada para interrupcion PC
 
 	in temp, PCIFR
 	ori temp, (1<<PCIF1)
-	out PCIFR, temp				;limpio el flag de interrupcion
+	out PCIFR, temp								;limpio el flag de interrupcion
 
 	lds temp, PCICR
 	ori temp, (1<<PCIE1)
-	sts PCICR, temp				;habilito la interrupcion de PC para el puerto D
+	sts PCICR, temp								;habilito la interrupcion de PC para el puerto D
 
 INICIALIZACION_TIMER0:
 	in temp, TCCR0B

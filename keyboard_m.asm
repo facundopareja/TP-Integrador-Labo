@@ -34,10 +34,10 @@ branch_detec:
 	ldi YH, high(passwordRAM)
 
 stand_by:
- 	cpi mode, STNBY_STATE
+ 	cpi mode, STNBY_STATE						;este bucle se ignora durante el primer PC, y luego sirve para quedarse esperando a recibir más teclas
  	breq stand_by
 
-detectando:
+detectando:										;esta función administra tecla desde que obtiene la tecla ingresada, hasta guardar el ascii
 	inc contador
 
 	clr tecla
@@ -57,12 +57,12 @@ detectando:
 	brne end_detectando
 
 	ldi mode, STNBY_STATE
-	rjmp stand_by 							;se queda detectando hasta que algo lo haga cambiar de estado
+	rjmp stand_by 								;si no llegó a obtener las 4 teclas, o no tuvo un error, vuelve a stand by a esperar más teclas
 
 end_detectando:
-	call validar_psw
+	call validar_psw							;una vez que las cuatro teclas están guardadas, se realiza la comparación con la contraseña guardada
 
-	ldi mode, LOCK_STATE
+	ldi mode, LOCK_STATE						;vuelve al estado de cerradura antes de salir
 
 	ret
 
@@ -73,7 +73,7 @@ buscar_tecla:
 
 	ldi tecla, teclado_ini
 
-busc_fila:
+busc_fila:										;se realiza un barrido de los pines de salidas para encontrar que tecla fue apretada
 	sec
 	rol tecla
 
@@ -83,7 +83,7 @@ busc_fila:
 	out PORTD, temp
 
 	nop
-	nop
+	nop											;fue necesario agregar unos ciclos intermedios para que los cambios de la salida tengan efecto
 
 	sbis PINC, PINC0
 	rjmp pars_busc
@@ -106,7 +106,7 @@ error_busc:
 pars_busc:
 	in temp, PINC 								;PIND debería tener un solo bit en 0 entre los bits 0 y 3
 	ori temp, msk_entrada
-	and tecla, temp								;solo quedan dos 0s
+	and tecla, temp								;solo quedan dos 0s, indicando fila y columna
 
 end_busc:
 	in temp, PCIFR
@@ -119,7 +119,7 @@ end_busc:
 
 	ret
 
-decod_tecla:
+decod_tecla:									;compara el registro con la tabla que indica que valor debe tener dependiendo de la tecla seleccionada
 	ldi temp, '0'
 	cpi tecla, TECLA_0
 	breq end_decod
@@ -184,8 +184,8 @@ decod_tecla:
 	cpi tecla, TECLA_num
 	breq end_decod
 	
-	ldi temp, 0xFF
-
+	ldi temp, 0xFF											;si se tocan más de una tecla, o se encontró algun otro fallo en la tecla
+															;se carga 0xFF para informar ocurrencia de error
 end_decod:
 	mov tecla, temp
 	ret
@@ -195,7 +195,7 @@ guardar_psw:
 	breq end_guardando
 
 	cpi tecla, 0xFF
-	breq end_guardando
+	breq end_guardando										;se saltea esta función si la decodificacion tuvo un error
 
 	st Y+, tecla 											;guarda el ascii en la memoria sram
 
@@ -205,7 +205,7 @@ guardar_psw:
 end_guardando:
 	ret
 
-validar_psw:
+validar_psw:												;se cargan las posiciones de memoria donde estan guardadas contraseña y teclas presioandas
 	cpi mode, LOCK_STATE
 	breq incorrecto
 
@@ -218,7 +218,7 @@ validar_psw:
 	ldi YL, low(passwordRAM)
 	ldi YH, high(passwordRAM)
 
-validando:
+validando:													;bucle que recorre los bytes a comparar, y sale si encuentra discrepancia
 	dec contador
 
 	ld temp, Y+
@@ -233,7 +233,7 @@ validando:
 	cpi temp, 0x00
 	brne validando
 
-correcto:
+correcto:													;si no hubo ningun error en las teclas, se da una respuesta que informa el éxito
 	sbi PORTB, PB4
 	ldi mode, LEDS_ON_WAITING
 	call OPEN_LOCK
@@ -279,7 +279,7 @@ INT_teclado:
 	in temp, sreg
 	push temp
 
-	call inicio_conteo
+	call inicio_conteo								;se llama a la funcion para esperar que finalice el efecto rebote
 
 	in temp, PORTD
 	andi temp, ~msk_entrada
