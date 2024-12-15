@@ -11,7 +11,7 @@
 .equ	stop_clock = (0 << CS22) | (0 << CS21) | (0 << CS20)
 
 TIMER2_Init:					
-	ldi temp, 0x00 				; WGM = 0 (modo normal, busco overflow cada 1.05 segundos)
+	ldi temp, 0x00 				; WGM = 0 (Normal mode, we want an overflow every 1.05 sec)
 	sts TCCR2A, temp
 	ldi temp, (1 << TOIE2)		; Enable the overflow interrupt
 	sts TIMSK2, temp
@@ -29,9 +29,9 @@ TIMER2_COMP:
 	in temp, SREG
 	push temp
 	
-	inc counter
+	inc counter ; We increase counter with each overflow
 	mov temp, counter
-	cpi temp, ONE_SECOND
+	cpi temp, ONE_SECOND ; If counter reaches ONE_SECOND increments, we add a second.
 	breq add_second
 	
 go_back:
@@ -41,12 +41,12 @@ go_back:
 	reti
 
 add_second:
-	clr counter
-	inc seconds_passed
+	clr counter ; We reset counter
+	inc seconds_passed ; We increase seconds by one
 	mov temp, seconds_passed
-	cpi temp, TIMEOUT
+	cpi temp, TIMEOUT 
 	brne go_back
-	ldi mode, LEDS_ON_DONE 
+	ldi mode, LEDS_ON_DONE ; Once we reach 10 seconds, we set the proper mode 
 	ldi temp, stop_clock
 	sts TCCR2B, temp
 	clr seconds_passed ; Everything related to the counter is reset so its ready for next use

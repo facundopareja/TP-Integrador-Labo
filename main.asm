@@ -54,9 +54,6 @@ passwordRAM: .byte LENGTH_CODE
 .org PCI1addr
 	rjmp INT_teclado
 
-.org OC2Aaddr
-	rjmp TIMER2_COMP
-
 .org OVF0addr
 	rjmp INT_timer0
 
@@ -148,9 +145,12 @@ start:
 	breq branch_detec_call
 	rjmp start
 
+; This loop handles configuration mode.
+; After receiving either 'T' or 'P' it enters date or keycode specific loops
+; Digits are stored in memory if they're valid and we wait until LENGTH_CODE numbers 
+; Afterwards we iterate the stored numbers and either write them to the RTC or store them in EEPROM.
 CONFIG_MODE:
 	clr numbers_received
-	; Prendo LEDs
 	sbi PORTB, PB4
 	sbi PORTB, PB5
 ; Once we're in config mode we loop until we receive an 'F', 'P' or 'T'
@@ -190,7 +190,6 @@ STORE_TIME:
 	clr numbers_received
 	ldi mode, CONFIG_STATE
 	rjmp WAIT_CHAR
-	;rjmp END_CONFIG_MODE
 STORE_CODE:
 	rcall LOADING_STR_PWD
 	rcall TRANSMIT_STR
@@ -210,7 +209,6 @@ LOOP_STORE:
 	ldi mode, CONFIG_STATE
 	rjmp WAIT_CHAR
 END_CONFIG_MODE:
-	; Apago leds
 	cbi PORTB, PB4
 	cbi PORTB, PB5
 	rjmp start
